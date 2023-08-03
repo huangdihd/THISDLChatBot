@@ -14,12 +14,12 @@
        def onEnable(self, logger, bot):
            # 当插件被启用时调用此方法
            # 返回一个包含插件支持的命令字典的列表
-           # 每个命令字典应该有 'command'、'description' 和 'def' 三个键。
-           # 'command': 命令名称（例如 '/hello'）。
+           # 每个命令字典应该有 'command' 和 'def'  两个键。
+           # 'command': 命令名称（例如 'hello'）(我补充一句:不用加斜杠!)。
            # 'description': 命令的简要描述。
            # 'def': 当命令被调用时要执行的函数。
            return [
-               {'command': '/hello', 'description': '打招呼', 'def': self.say_hello}
+               {'command': 'hello', 'def': self.say_hello}
            ]
 
        def onDisable(self, logger, bot):
@@ -29,7 +29,7 @@
 
        async def say_hello(self, args, bot, from_userid):
            # 当'/hello'命令被调用时执行此方法
-           # 'args' 是一个包含命令后提供的参数的列表（例如 ['/hello', 'John']）。
+           # 'args' 是一个包含命令后提供的参数的列表（例如 ['John']）。
            # 'bot' 是用于向聊天发送消息的机器人对象。
            # 'from_userid' 是发送命令的用户ID。
            # 在这里实现命令功能。
