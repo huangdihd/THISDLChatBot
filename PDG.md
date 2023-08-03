@@ -1,11 +1,12 @@
 ## 插件开发指南(GPT写的)
 
-1. 在`plugins`目录中创建一个新的Python文件，取一个描述性的名字作为插件名称（例如`my_plugin.py`）。
+1. 在`plugins`目录中创建一个新的Python文件，取一个描述性的名字作为插件名称（例如`MyPlugin.py`）。
 
 2. 在新的Python文件中定义你的插件类。这个类至少应该有以下三个方法：
 
    ```python
    class MyPlugin:
+       # 类名需与不带后缀的文件名相同
        def onLoad(self, logger, bot):
            # 当插件被加载时调用此方法
            # 可以在这里初始化资源，设置配置等
