@@ -16,5 +16,5 @@
 #### 想自己写的话可以看看[插件开发指南](https://github.com/huangdihd/THISDLChatBot/blob/main/PDG.md)
 ## 遇到问题
 ### 去Issues提干嘛?愣着啊!
-## 建议个意见
+## 建议和意见
 ### 可以去Issues提,也欢迎给作者发邮件 `hd20100104@163.com` 来讨论这个项目
