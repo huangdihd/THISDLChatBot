@@ -5,6 +5,7 @@
 #### 这个不用我教了吧,我相信你能搞定的  
 ### 2.克隆仓库中的程序
 #### 在你的电脑/服务器的终端上运行 `git clone https://github.com/huangdihd/THISDLChatBot/edit/main/README.md`
+#### 如果你实在是懒得装git也可以直接下载[Releases](https://github.com/huangdihd/THISDLChatBot/releases)中的文件
 ### 3.运行
 #### 直接启动main.py就可以了 `python3 main.py`
 ### 4.安装前置库
