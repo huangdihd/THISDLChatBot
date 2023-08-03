@@ -15,9 +15,8 @@
        def onEnable(self, logger, bot):
            # 当插件被启用时调用此方法
            # 返回一个包含插件支持的命令字典的列表
-           # 每个命令字典应该有 'command' 和 'def'  两个键。
+           # 每个命令字典应该有 'command' 和 'def' 两个键。
            # 'command': 命令名称（例如 'hello'）(我补充一句:不用加斜杠!)。
-           # 'description': 命令的简要描述。
            # 'def': 当命令被调用时要执行的函数。
            return [
                {'command': 'hello', 'def': self.say_hello}
