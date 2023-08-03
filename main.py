@@ -14,17 +14,17 @@ try:
     colorama.init()
 except ModuleNotFoundError:
     now = datetime.now()
-    print(f"[{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}] [WARN]检测到缺少模块:colorama,开始安装!")
+    print(f"[{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}][WARN]检测到缺少模块:colorama,开始安装!")
     install = os.system(sys.executable + " -m pip install colorama")
     if install != 0:
-        print(f"[{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}] [ERROR]安装失败!")
+        print(f"[{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}][ERROR]安装失败!")
         sys.exit(1)
     else:
         import colorama
 
         colorama.init()
         print(
-            f"[{colorama.Fore.RESET}{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}] [{colorama.Fore.BLUE}SUCCESS{colorama.Fore.RESET}]安装成功!")
+            f"[{colorama.Fore.RESET}{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}]安装成功!")
 
 
 # 创建Logger对象
@@ -185,46 +185,45 @@ logger.success("登录成功")
 
 
 # 创建bot对象
-class bot:
-    def getuserid(self):
+class Bot:
+    async def getuserid(self):
         global userid
         return userid
 
-    def send(self, type: str, data, to_userid: str):
+    async def send(self, type: str, data, to_userid: str):
         if type != "text":
             raise "Message_type_error"
         global packageId
         global userid
-        requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
-                      json={
-                          "action": "im.cts.message",
-                          "body": {
-                              "@type": "type.googleapis.com/site.ImCtsMessageRequest",
-                              "message": {
-                                  "fromUserId": userid,
-                                  "roomType": "MessageRoomU2",
-                                  "toUserId": to_userid,
-                                  "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
-                                  "timeServer": round(time.time(), 3) * 1000,
-                                  "text": {
-                                      "body": data
-                                  },
-                                  "type": "MessageText"
-                              }
-                          },
-                          "header": {
-                              "_3": token,
-                              "_4": "http://chat.thisit.cc/index.php",
-                              "_8": "1",
-                              "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-                          },
-                          "packageId": packageId
-                      })
+        await requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1", json={
+            "action": "im.cts.message",
+            "body": {
+                "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                "message": {
+                    "fromUserId": userid,
+                    "roomType": "MessageRoomU2",
+                    "toUserId": to_userid,
+                    "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
+                    "timeServer": round(time.time(), 3) * 1000,
+                    "text": {
+                        "body": data
+                    },
+                    "type": "MessageText"
+                }
+            },
+            "header": {
+                "_3": token,
+                "_4": "http://chat.thisit.cc/index.php",
+                "_8": "1",
+                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+            },
+            "packageId": packageId
+        })
         packageId += 1
         return True
 
 
-Bot = bot()
+bot = Bot()
 
 # 加载插件
 logger.info("开始加载插件...")
@@ -235,22 +234,27 @@ for filename in os.listdir("plugins"):
         if hasattr(plugin, "onEnable") and hasattr(plugin, "onDisable") and hasattr(plugin, "onLoad"):
             plugin = plugin()
             plugins[filename[:-3]] = plugin
-            plugin.onLoad(logger, Bot)
+            plugin.onLoad(logger, bot)
             logger.success("成功加载插件" + filename[:-3] + "!")
 logger.success("所有插件都加载完了!")
 
 commands = []
 
 for plugin_name, plugin in plugins.items():
-    for i in plugin.onEnable(logger, Bot):
+    for i in plugin.onEnable(logger, bot):
         commands.append(i)
 
+async def process_command(command, args, bot, from_userid):
+    for cmd in commands:
+        if command == cmd['command']:
+            await cmd['def'](args, bot, from_userid)
+            return
 
 # 创建关闭时的函数
 def onExit():
     global plugins
     for plugin_name, plugin in plugins.items():
-        plugin.onDisable(logger, Bot)
+        plugin.onDisable(logger, bot)
         logger.success("成功关闭插件" + plugin_name + '!')
     logger.success("程序关闭")
     logger.success("Good Bye...")
@@ -260,83 +264,104 @@ atexit.register(onExit)
 
 # 消息获取循环
 packageId = 1
-while True:
-    response = requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format=json&lang=1", json={
-        "action": "im.cts.sync",
-        "body": {
-            "@type": "type.googleapis.com/site.ImCtsSyncRequest",
-            "u2Count": 200,
-            "groupCount": 200
-        },
-        "header": {
-            "_3": token,
-            "_4": "http://chat.thisit.cc/index.php",
-            "_8": "1",
-            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-        },
-        "packageId": packageId
-    })
-    if len(response.json()['body']['list']) > 1:
-        for i in response.json()['body']['list'][:-1]:
-            res = requests.post(url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
-                                json={
-                                    "action": "api.friend.profile",
-                                    "body": {
-                                        "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
-                                        "userId": i['fromUserId']
-                                    },
-                                    "header": {
-                                        "_3": token,
-                                        "_4": "http://chat.thisit.cc/index.php",
-                                        "_8": "1",
-                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-                                    },
-                                    "packageId": packageId
-                                })
-            packageId += 1
-            if i['type'] == 'MessageEventFriendRequest':
-                logger.info("收到来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的好友申请!")
-                if config['auto_accept']:
-                    requests.post(
-                        url="http://chat.thisit.cc/index.php?action=api.friend.accept&body_format=json&lang=1",
+async def message_loop():
+    global packageId
+    global token
+    while True:
+        response = requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format=json&lang=1", json={
+            "action": "im.cts.sync",
+            "body": {
+                "@type": "type.googleapis.com/site.ImCtsSyncRequest",
+                "u2Count": 200,
+                "groupCount": 200
+            },
+            "header": {
+                "_3": token,
+                "_4": "http://chat.thisit.cc/index.php",
+                "_8": "1",
+                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+            },
+            "packageId": packageId
+        })
+        if len(response.json()['body']['list']) > 1:
+            for i in response.json()['body']['list'][:-1]:
+                res = requests.post(url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
+                                    json={
+                                        "action": "api.friend.profile",
+                                        "body": {
+                                            "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
+                                            "userId": i['fromUserId']
+                                        },
+                                        "header": {
+                                            "_3": token,
+                                            "_4": "http://chat.thisit.cc/index.php",
+                                            "_8": "1",
+                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+                                        },
+                                        "packageId": packageId
+                                    })
+                packageId += 1
+                if i['type'] == 'MessageEventFriendRequest':
+                    logger.info("收到来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的好友申请!")
+                    if config['auto_accept']:
+                        requests.post(
+                            url="http://chat.thisit.cc/index.php?action=api.friend.accept&body_format=json&lang=1",
+                            json={
+                                "action": "api.friend.accept",
+                                "body": {
+                                    "@type": "type.googleapis.com/site.ApiFriendAcceptRequest",
+                                    "applyUserId": i['fromUserId'],
+                                    "agree": True
+                                },
+                                "header": {
+                                    "_3": token,
+                                    "_4": "http://chat.thisit.cc/index.php",
+                                    "_8": "1",
+                                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                },
+                                "packageId": packageId
+                            })
+                        packageId += 1
+                requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                              json={
+                                  "action": "im.cts.updatePointer",
+                                  "body": {
+                                      "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                      "u2Pointer": i['pointer'],
+                                      "groupsPointer": {}
+                                  },
+                                  "header": {
+                                      "_3": token,
+                                      "_4": "http://chat.thisit.cc/index.php",
+                                      "_8": "1",
+                                      "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                  },
+                                  "packageId": packageId
+                              })
+                packageId += 1
+                if i['fromUserId'] == userid:
+                    res = requests.post(url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
                         json={
-                            "action": "api.friend.accept",
+                            "action": "api.friend.profile",
                             "body": {
-                                "@type": "type.googleapis.com/site.ApiFriendAcceptRequest",
-                                "applyUserId": i['fromUserId'],
-                                "agree": True
+                                "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
+                                "userId": i['toUserId']
                             },
                             "header": {
                                 "_3": token,
                                 "_4": "http://chat.thisit.cc/index.php",
                                 "_8": "1",
-                                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
                             },
                             "packageId": packageId
                         })
-                    packageId += 1
-            requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
-                          json={
-                              "action": "im.cts.updatePointer",
-                              "body": {
-                                  "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
-                                  "u2Pointer": i['pointer'],
-                                  "groupsPointer": {}
-                              },
-                              "header": {
-                                  "_3": token,
-                                  "_4": "http://chat.thisit.cc/index.php",
-                                  "_8": "1",
-                                  "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-                              },
-                              "packageId": packageId
-                          })
-            packageId += 1
-            if i['fromUserId'] == userid:
-                logger.info("我:" + i['text']['body'])
-                continue
-            logger.info("来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
-            for command in commands:
-                if i['text']['body'].startswith("/" + command['command']):
-                    command['def'](i['text']['body'][len("/" + command['command']):].split(' '), Bot, i['fromUserId'])
-    time.sleep(config['wait_time'] / 1000)
+                    logger.info("发送到用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
+                    continue
+                logger.info("来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
+                for command in commands:
+                    if i['text']['body'].startswith("/"):
+                        args = i['text']['body'][1:].split(' ')
+                        command = args[0]
+                        await process_command(command, args[1:], bot, i['fromUserId'])
+        await asyncio.sleep(config['wait_time'] / 1000)
+asyncio.run(message_loop())
