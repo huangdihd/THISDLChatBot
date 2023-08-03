@@ -1,7 +1,7 @@
 # THISDLChatBot  
 一个基于python的THISDLChatRoom的异步聊天机器人开源框架  
 ## 使用教程  
-### 1.安装python3
+### 1.安装3.7以上版本的python
 #### 这个不用我教了吧,我相信你能搞定的  
 ### 2.克隆仓库中的程序
 #### 在你的电脑/服务器的终端上运行 `git clone https://github.com/huangdihd/THISDLChatBot.git`
