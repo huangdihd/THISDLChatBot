@@ -195,7 +195,7 @@ class Bot:
             raise "Message_type_error"
         global packageId
         global userid
-        await requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1", json={
+        requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1", json={
             "action": "im.cts.message",
             "body": {
                 "@type": "type.googleapis.com/site.ImCtsMessageRequest",
@@ -379,7 +379,7 @@ async def message_loop():
                 await process_message(i['text']['body'], bot, i['fromUserId'])
                 if i['text']['body'].startswith("/"):
                     args = i['text']['body'][1:].split(' ')
-                    command = args[0][1:]
+                    command = args[0]
                     await process_command(command, args[1:], bot, i['fromUserId'])
         await asyncio.sleep(config['wait_time'] / 1000)
 
