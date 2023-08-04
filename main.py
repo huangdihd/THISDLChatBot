@@ -234,27 +234,39 @@ for filename in os.listdir("plugins"):
         if hasattr(plugin, "onEnable") and hasattr(plugin, "onDisable") and hasattr(plugin, "onLoad"):
             plugin = plugin()
             plugins[filename[:-3]] = plugin
-            plugin.onLoad(logger, bot)
+            plugin.onLoad(logger=logger, bot=bot)
             logger.success("成功加载插件" + filename[:-3] + "!")
 logger.success("所有插件都加载完了!")
 
 commands = []
+messages = []
 
 for plugin_name, plugin in plugins.items():
-    for i in plugin.onEnable(logger, bot):
+    plugin_data = plugin.onEnable(logger=logger, bot=bot)
+    for i in plugin_data['commands']:
         commands.append(i)
+    for i in plugin_data['messages']:
+        messages.append(i)
+
 
 async def process_command(command, args, bot, from_userid):
     for cmd in commands:
         if command == cmd['command']:
-            await cmd['def'](args, bot, from_userid)
+            await cmd['def'](logger=logger, args=args, bot=bot, from_userid=from_userid)
             return
+
+
+async def process_message(message, bot, from_userid):
+    for msg in messages:
+        await msg['def'](logger=logger, message=message, bot=bot, from_userid=from_userid)
+        return
+
 
 # 创建关闭时的函数
 def onExit():
     global plugins
     for plugin_name, plugin in plugins.items():
-        plugin.onDisable(logger, bot)
+        plugin.onDisable(logger=logger, bot=bot)
         logger.success("成功关闭插件" + plugin_name + '!')
     logger.success("程序关闭")
     logger.success("Good Bye...")
@@ -264,42 +276,46 @@ atexit.register(onExit)
 
 # 消息获取循环
 packageId = 1
+
+
 async def message_loop():
     global packageId
     global token
     while True:
-        response = requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format=json&lang=1", json={
-            "action": "im.cts.sync",
-            "body": {
-                "@type": "type.googleapis.com/site.ImCtsSyncRequest",
-                "u2Count": 200,
-                "groupCount": 200
-            },
-            "header": {
-                "_3": token,
-                "_4": "http://chat.thisit.cc/index.php",
-                "_8": "1",
-                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-            },
-            "packageId": packageId
-        })
+        response = requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format=json&lang=1",
+                                 json={
+                                     "action": "im.cts.sync",
+                                     "body": {
+                                         "@type": "type.googleapis.com/site.ImCtsSyncRequest",
+                                         "u2Count": 200,
+                                         "groupCount": 200
+                                     },
+                                     "header": {
+                                         "_3": token,
+                                         "_4": "http://chat.thisit.cc/index.php",
+                                         "_8": "1",
+                                         "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                     },
+                                     "packageId": packageId
+                                 })
         if len(response.json()['body']['list']) > 1:
             for i in response.json()['body']['list'][:-1]:
-                res = requests.post(url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
-                                    json={
-                                        "action": "api.friend.profile",
-                                        "body": {
-                                            "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
-                                            "userId": i['fromUserId']
-                                        },
-                                        "header": {
-                                            "_3": token,
-                                            "_4": "http://chat.thisit.cc/index.php",
-                                            "_8": "1",
-                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-                                        },
-                                        "packageId": packageId
-                                    })
+                res = requests.post(
+                    url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
+                    json={
+                        "action": "api.friend.profile",
+                        "body": {
+                            "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
+                            "userId": i['fromUserId']
+                        },
+                        "header": {
+                            "_3": token,
+                            "_4": "http://chat.thisit.cc/index.php",
+                            "_8": "1",
+                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+                        },
+                        "packageId": packageId
+                    })
                 packageId += 1
                 if i['type'] == 'MessageEventFriendRequest':
                     logger.info("收到来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的好友申请!")
@@ -340,7 +356,8 @@ async def message_loop():
                               })
                 packageId += 1
                 if i['fromUserId'] == userid:
-                    res = requests.post(url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
+                    res = requests.post(
+                        url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
                         json={
                             "action": "api.friend.profile",
                             "body": {
@@ -355,13 +372,16 @@ async def message_loop():
                             },
                             "packageId": packageId
                         })
-                    logger.info("发送到用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
+                    logger.info(
+                        "发送到用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
                     continue
                 logger.info("来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
-                for command in commands:
-                    if i['text']['body'].startswith("/"):
-                        args = i['text']['body'][1:].split(' ')
-                        command = args[0]
-                        await process_command(command, args[1:], bot, i['fromUserId'])
+                await process_message(i['text']['body'], bot, i['fromUserId'])
+                if i['text']['body'].startswith("/"):
+                    args = i['text']['body'][1:].split(' ')
+                    command = args[0][1:]
+                    await process_command(command, args[1:], bot, i['fromUserId'])
         await asyncio.sleep(config['wait_time'] / 1000)
+
+
 asyncio.run(message_loop())
