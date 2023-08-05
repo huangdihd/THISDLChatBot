@@ -110,6 +110,20 @@ def configreader():
                 except ValueError:
                     logger.error("错误:该值不是数字!")
                     waittime = input("输入每次获取消息的间隔时间(ms),默认500:")
+        auto_login = input("是否自动重新登录(true或false),默认true:")
+        if auto_login == "":
+            auto_login = True
+        else:
+            while True:
+                if auto_login == "true":
+                    auto_login = True
+                    break
+                elif auto_login == "false":
+                    auto_login = False
+                    break
+                else:
+                    logger.error("错误:请输入true或false:!")
+                    auto_login = input("是否自动同意好友申请(true或false),默认true:")
         auto_accept = input("是否自动同意好友申请(true或false),默认true:")
         if auto_accept == "":
             auto_accept = True
@@ -123,11 +137,12 @@ def configreader():
                     break
                 else:
                     logger.error("错误:请输入true或false:!")
-                    waittime = input("是否自动同意好友申请(true或false),默认true:")
+                    auto_accept = input("是否自动同意好友申请(true或false),默认true:")
         config = {
             "username": username,
             "password": password,
             "wait_time": waittime,
+            "auto_login": auto_login,
             "auto_accept": auto_accept
         }
         with open("config.json", 'w') as f:
@@ -190,37 +205,65 @@ class Bot:
         global userid
         return userid
 
-    async def send(self, type: str, data, to_userid: str):
+    async def send(self, type: str, data, to_userid: str, group):
         if type != "text":
             raise "Message_type_error"
         global packageId
         global userid
-        requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1", json={
-            "action": "im.cts.message",
-            "body": {
-                "@type": "type.googleapis.com/site.ImCtsMessageRequest",
-                "message": {
-                    "fromUserId": userid,
-                    "roomType": "MessageRoomU2",
-                    "toUserId": to_userid,
-                    "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
-                    "timeServer": round(time.time(), 3) * 1000,
-                    "text": {
-                        "body": data
+        if group is None:
+            requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1", json={
+                "action": "im.cts.message",
+                "body": {
+                    "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                    "message": {
+                        "fromUserId": userid,
+                        "roomType": "MessageRoomU2",
+                        "toUserId": to_userid,
+                        "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
+                        "timeServer": round(time.time(), 3) * 1000,
+                        "text": {
+                            "body": data
+                        },
+                        "type": "MessageText"
+                    }
+                },
+                "header": {
+                    "_3": token,
+                    "_4": "http://chat.thisit.cc/index.php",
+                    "_8": "1",
+                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+                },
+                "packageId": packageId
+            })
+            packageId += 1
+            return True
+        else:
+            requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1", json={
+                    "action": "im.cts.message",
+                    "body": {
+                        "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                        "message": {
+                            "fromUserId": userid,
+                            "roomType": "MessageRoomGroup",
+                            "toGroupId": group,
+                            "msgId": f"GROUP-{math.floor(round(time.time(), 3) * 1000)}",
+                            "timeServer": round(time.time(), 3) * 1000,
+                            "text": {
+                                "body": data
+                            },
+                            "type": "MessageText"
+                        }
                     },
-                    "type": "MessageText"
-                }
-            },
-            "header": {
-                "_3": token,
-                "_4": "http://chat.thisit.cc/index.php",
-                "_8": "1",
-                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-            },
-            "packageId": packageId
-        })
-        packageId += 1
-        return True
+                    "header": {
+                        "_3": token,
+                        "_4": "http://chat.thisit.cc/index.php",
+                        "_8": "1",
+                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                    },
+                    "packageId": packageId
+                })
+            packageId += 1
+            return True
 
 
 bot = Bot()
@@ -249,16 +292,16 @@ for plugin_name, plugin in plugins.items():
         messages.append(i)
 
 
-async def process_command(command, args, bot, from_userid):
+async def process_command(command, args, bot, from_userid, group):
     for cmd in commands:
         if command == cmd['command']:
-            await cmd['def'](logger=logger, args=args, bot=bot, from_userid=from_userid)
+            await cmd['def'](logger=logger, args=args, bot=bot, from_userid=from_userid, group=group)
             return
 
 
-async def process_message(message, bot, from_userid):
+async def process_message(message, bot, from_userid, group):
     for msg in messages:
-        await msg['def'](logger=logger, message=message, bot=bot, from_userid=from_userid)
+        await msg['def'](logger=logger, message=message, bot=bot, from_userid=from_userid, group=group)
         return
 
 
@@ -279,6 +322,7 @@ packageId = 1
 
 
 async def message_loop():
+    global userid
     global packageId
     global token
     while True:
@@ -339,51 +383,195 @@ async def message_loop():
                                     "packageId": packageId
                                 })
                             packageId += 1
-                    requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
-                                  json={
-                                      "action": "im.cts.updatePointer",
-                                      "body": {
-                                          "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
-                                          "u2Pointer": i['pointer'],
-                                          "groupsPointer": {}
-                                      },
-                                      "header": {
-                                          "_3": token,
-                                          "_4": "http://chat.thisit.cc/index.php",
-                                          "_8": "1",
-                                          "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-                                      },
-                                      "packageId": packageId
-                                  })
-                    packageId += 1
-                    if i['fromUserId'] == userid:
-                        res = requests.post(
-                            url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
-                            json={
-                                "action": "api.friend.profile",
-                                "body": {
-                                    "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
-                                    "userId": i['toUserId']
-                                },
-                                "header": {
-                                    "_3": token,
-                                    "_4": "http://chat.thisit.cc/index.php",
-                                    "_8": "1",
-                                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-                                },
-                                "packageId": packageId
-                            })
-                        logger.info(
-                            "发送到用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
-                        continue
-                    logger.info("来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
-                    await process_message(i['text']['body'], bot, i['fromUserId'])
-                    if i['text']['body'].startswith("/"):
-                        args = i['text']['body'][1:].split(' ')
-                        command = args[0]
-                        await process_command(command, args[1:], bot, i['fromUserId'])
+                    elif i['type'] == 'MessageNotice':
+                        logger.info('收到一个消息:' + i['notice']['body'])
+                        if i['msgId'].startswith('GP-'):
+                            requests.post(
+                                url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                                json={
+                                    "action": "im.cts.updatePointer",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                        "u2Pointer": 0,
+                                        "groupsPointer": {
+                                            i['toGroupId']: i['pointer']
+                                        }
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                    },
+                                    "packageId": packageId
+                                })
+                        packageId += 1
+                    else:
+                        group = None
+                        if i['msgId'].startswith('GROUP-'):
+                            group = i['toGroupId']
+                            requests.post(
+                                url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                                json={
+                                    "action": "im.cts.updatePointer",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                        "u2Pointer": 0,
+                                        "groupsPointer": {
+                                            i['toGroupId']: i['pointer']
+                                        }
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                    },
+                                    "packageId": packageId
+                                })
+                            packageId += 1
+                            global userid
+                            ress = requests.post(
+                                url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
+                                json={
+                                    "action": "api.friend.profile",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
+                                        "userId": i['fromUserId']
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+                                    },
+                                    "packageId": packageId
+                                })
+                            res = requests.post(
+                                url='http://chat.thisit.cc/index.php?action=api.group.profile&body_format=json&lang=1',
+                                json={
+                                    "action": "api.group.profile",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ApiGroupProfileRequest",
+                                        "groupId": i['toGroupId']
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                    },
+                                    "packageId": packageId
+                                })
+                            packageId += 1
+                            if i['fromUserId'] == userid:
+                                logger.info(
+                                    "发送到群" + res.json()['body']['profile']['name'] + "的消息:" + i['text'][
+                                        'body'])
+                                continue
+                            logger.info(
+                                "来自用户" + ress.json()['body']['profile']['profile']['nickname'] + "在群" + res.json()['body']['profile']['name'] + "中的消息:" + i['text'][
+                                    'body'])
+                        else:
+                            requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                                          json={
+                                              "action": "im.cts.updatePointer",
+                                              "body": {
+                                                  "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                                  "u2Pointer": i['pointer'],
+                                                  "groupsPointer": {}
+                                              },
+                                              "header": {
+                                                  "_3": token,
+                                                  "_4": "http://chat.thisit.cc/index.php",
+                                                  "_8": "1",
+                                                  "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                              },
+                                              "packageId": packageId
+                                          })
+                            packageId += 1
+
+                            if i['fromUserId'] == userid:
+                                res = requests.post(
+                                    url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
+                                    json={
+                                        "action": "api.friend.profile",
+                                        "body": {
+                                            "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
+                                            "userId": i['toUserId']
+                                        },
+                                        "header": {
+                                            "_3": token,
+                                            "_4": "http://chat.thisit.cc/index.php",
+                                            "_8": "1",
+                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+                                        },
+                                        "packageId": packageId
+                                    })
+                                logger.info(
+                                    "发送到用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
+                                continue
+                            logger.info("来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text']['body'])
+                        await process_message(i['text']['body'], bot, i['fromUserId'], group)
+                        if i['text']['body'].startswith("/"):
+                            args = i['text']['body'][1:].split(' ')
+                            command = args[0]
+                            await process_command(command, args[1:], bot, i['fromUserId'], group)
         except KeyError:
-            logger.warn('出现了一个无法解析的消息!')
+            if response.json()['header']['_1'] == 'error.session':
+                if config['auto_login']:
+                    logger.error('获取消息失败,session错误,正在尝试重新登录!')
+                    logger.info("开始登录流程...")
+                    logger.info("账号: " + config['username'])
+                    login = requests.post(
+                        url="http://chat.thisit.cc/index.php?action=api.passport.passwordLogin&body_format=json&lang=1",
+                        json={
+                            "action": "api.passport.passwordLogin",
+                            "body": {
+                                "@type": "type.googleapis.com/site.ApiPassportPasswordLoginRequest",
+                                "loginName": config['username'],
+                                "password": config['password']
+                            },
+                            "header": {
+                                "_4": "http://chat.thisit.cc/index.php",
+                                "_8": "1",
+                                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                            },
+                            "packageId": 1
+                        })
+                    try:
+                        t = login.json()['body']['preSessionId']
+                    except KeyError:
+                        logger.error("登陆失败:" + login.text)
+                        sys.exit(1)
+                    logger.info("preSessionId:" + t)
+                    token = requests.post(
+                        url="http://chat.thisit.cc/index.php?action=page.passport.login&action=api.site.login&body_format=json",
+                        json={
+                            "action": "api.site.login",
+                            "body": {
+                                "@type": "type.googleapis.com/site.ApiSiteLoginRequest",
+                                "preSessionId": t,
+                                "loginName": "黄荻",
+                                "isRegister": False,
+                                "thirdPartyKey": ""
+                            },
+                            "header": {
+                                "_4": "http://chat.thisit.cc/index.php?action=page.passport.login",
+                                "_8": "1",
+                                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                            },
+                            "packageId": 2
+                        })
+                    userid = token.json()['body']['profile']['public']['userId']
+                    token = token.cookies['zaly_site_user']
+                    logger.info("token:" + token)
+                    logger.success("登录成功")
+                else:
+                    logger.error('获取消息失败,session错误!')
+                    sys.exit()
+            else:
+                logger.warn('出现了一个无法解析的消息!')
         except Exception as e:
             logger.error('出现了一个错误:' + str(e))
         await asyncio.sleep(config['wait_time'] / 1000)
