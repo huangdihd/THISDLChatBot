@@ -600,7 +600,7 @@ async def message_loop():
                             web = BeautifulSoup(i['web']['code'], 'html.parser')
                             if i['web']['title'] == 'GIF':
                                 url = web.find('img')['src']
-                                gif = requests.get(url=url, cookies={
+                                gif = requests.get(url="http://chat.thisit.cc/" + url, cookies={
                                     'zaly_site_user': token
                                 })
                                 type = gif.headers.get('content-type').split('/')[1]
