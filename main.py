@@ -250,7 +250,7 @@ token = requests.post(
         "body": {
             "@type": "type.googleapis.com/site.ApiSiteLoginRequest",
             "preSessionId": t,
-            "loginName": "黄荻",
+            "loginName": config['username'],
             "isRegister": False,
             "thirdPartyKey": ""
         },
@@ -610,19 +610,22 @@ async def message_loop():
                                         "发送到用户" + res.json()['body']['profile']['profile']['nickname'] + "的表情:" + url)
                                     continue
                                 logger.info(
-                                    "来自用户" + ress.json()['body']['profile']['profile']['nickname'] + "在群" +
-                                    res.json()['body']['profile']['name'] + "中的表情:" + filename + ",存放于" +
-                                    'images' + os.sep + '[' + i['msgId'] + ']' + filename)
+                                    "来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的表情:" + filename +
+                                    ",存放于" + 'images' + os.sep + '[' + i['msgId'] + ']' + filename)
                                 with open("images" + os.sep + '[' + i['msgId'] + ']' + filename, 'wb') as f:
                                     f.write(gif.content)
+                                for line in image_to_ascii("images" + os.sep + '[' + i['msgId'] + ']' + filename).split(
+                                        '\n')[
+                                            :-1]:
+                                    logger.info(line)
+                                continue
                             if i['fromUserId'] == userid:
                                 logger.info(
-                                    "发送到群" + res.json()['body']['profile']['name'] + "的HTML消息:" + web.text)
+                                    "发送到用户" + res.json()['body']['profile']['profile']['nickname'] + "的HTML消息:" + web.text)
                                 continue
 
                             logger.info(
-                                "来自用户" + ress.json()['body']['profile']['profile']['nickname'] + "在群" +
-                                res.json()['body']['profile']['name'] + "中的HTML消息:" + web.text)
+                                "来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的HTML消息:" + web.text)
                             if i['fromUserId'] == userid:
                                 res = requests.post(
                                     url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
@@ -648,8 +651,6 @@ async def message_loop():
                             file = requests.get(f"http://chat.thisit.cc/index.php?action=http.file.downloadFile&fileId={i['document']['url']}&returnBase64=0&isGroupMessage=0&messageId={i['msgId']}&lang=1", cookies={
                                 'zaly_site_user': token
                             })
-                        with open('files' + os.sep + '[' + i['msgId'] + ']' + i['document']['name'], 'wb') as f:
-                            f.write(file.content)
                     elif i['type'] == 'MessageDocument':
                         file = None
                         if i['msgId'].startswith('GROUP-'):
@@ -1025,7 +1026,7 @@ async def message_loop():
                             "body": {
                                 "@type": "type.googleapis.com/site.ApiSiteLoginRequest",
                                 "preSessionId": t,
-                                "loginName": "黄荻",
+                                "loginName": config['username'],
                                 "isRegister": False,
                                 "thirdPartyKey": ""
                             },
