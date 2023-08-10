@@ -648,9 +648,9 @@ async def process_command(command, args, bot, from_userid, group):
             return
 
 
-async def process_message(typt, message, bot, from_userid, group):
+async def process_message(type, message, bot, from_userid, group):
     for msg in messages:
-        await msg['def'](type=typt, logger=logger, message=message, bot=bot, from_userid=from_userid, group=group)
+        await msg['def'](message_type=type, logger=logger, message=message, bot=bot, from_userid=from_userid, group=group)
         return
 
 
@@ -1374,8 +1374,6 @@ async def message_loop():
                     sys.exit()
             else:
                 logger.warn('出现了一个无法解析的消息!' + str(e))
-        except Exception as e:
-            logger.error('出现了一个错误:' + str(e))
         await asyncio.sleep(config['wait_time'] / 1000)
 
 

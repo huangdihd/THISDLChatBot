@@ -50,16 +50,16 @@
               # 'group' 是发送的群号,为None则是私聊
               await bot.send(type='text', data='你好！', to_userid=from_userid, group=group)
       
-          async def write_file(self, type, logger, message, bot, from_userid, group):
+          async def write_file(self, message_type, logger, message, bot, from_userid, group):
               # 当有人发消息时时执行此方法
-              # 'type' 是消息的类型,有text(文本),file(文件),image(图片),html,gif(表情)几个类型
+              # 'message_type' 是消息的类型,有text(文本),file(文件),image(图片),html,gif(表情)几个类型
               # 'logger' 是一个日志输出对象,可以用logger.success()、logger.info()、logger.warn()、logger.error()来输出对应等级的日志
               # 'message' 是对方发送的消息
               # 'bot' 是用于向聊天发送消息的机器人对象。
               # 'from_userid' 是发送命令的用户ID。
               # 在这里实现命令功能。
               # 例如这里就记录了一个日志
-              if type != 'text':
+              if message_type != 'text':
                   return 
               if group is None:
                   with open("log",'a') as log:
