@@ -1,3 +1,4 @@
+import inspect
 import sys
 import os
 from datetime import datetime
@@ -615,6 +616,71 @@ class Bot:
         else:
             raise ValueError("Message_type_error")
 
+    async def apply_friend(self, user_id: str, greeting: str):
+        global token
+        requests.post(url='http://chat.thisit.cc/index.php?action=miniProgram.square.apply', json={
+            "friendId": user_id,
+            "greeting": greeting
+        }, cookies={
+            'zaly_site_user': token
+        })
+
+    async def recall_message(self, message_id, group_id, user_id):
+        global token, packageId
+        if group_id is not None:
+            requests.post(url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1', json={
+                "action": "im.cts.message",
+                "body": {
+                    "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                    "message": {
+                        "fromUserId": self.getuserid(),
+                        "roomType": "MessageRoomGroup",
+                        "toGroupId": group_id,
+                        "msgId": f"GROUP-{math.floor(round(time.time(), 3) * 1000)}",
+                        "timeServer": round(time.time(), 3) * 1000,
+                        "recall": {
+                            "msgId": message_id,
+                            "msgText": "此消息被撤回"
+                        },
+                        "type": "MessageRecall"
+                    }
+                },
+                "header": {
+                    "_3": token,
+                    "_4": "http://chat.thisit.cc/",
+                    "_8": "1",
+                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                },
+                "packageId": packageId
+            })
+        else:
+            requests.post(url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1', json={
+                "action": "im.cts.message",
+                "body": {
+                    "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                    "message": {
+                        "fromUserId": self.getuserid(),
+                        "roomType": "MessageRoomU2",
+                        "toUserId": user_id,
+                        "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
+                        "timeServer": round(time.time(), 3) * 1000,
+                        "recall": {
+                            "msgId": message_id,
+                            "msgText": "此消息被撤回"
+                        },
+                        "type": "MessageRecall"
+                    }
+                },
+                "header": {
+                    "_3": token,
+                    "_4": "http://chat.thisit.cc/",
+                    "_8": "1",
+                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                },
+                "packageId": packageId
+            })
+        packageId += 1
+
 
 bot = Bot()
 # 加载插件
@@ -635,22 +701,33 @@ messages = []
 
 for plugin_name, plugin in plugins.items():
     plugin_data = plugin.onEnable(logger=logger, bot=bot)
-    for i in plugin_data['commands']:
-        commands.append(i)
-    for i in plugin_data['messages']:
-        messages.append(i)
+    if 'commands' in plugin_data:
+        for i in plugin_data['commands']:
+            commands.append(i)
+    if 'messages' in plugin_data:
+        for i in plugin_data['messages']:
+            messages.append(i)
 
 
-async def process_command(command, args, bot, from_userid, group):
+def determine_accepted_args(func, **kwargs):
+    accepted = inspect.signature(func).parameters
+    return {k: v for k, v in kwargs.items() if k in accepted}
+
+
+async def process_command(command, args, bot, from_userid, group, message_id):
     for cmd in commands:
         if command == cmd['command']:
-            await cmd['def'](logger=logger, args=args, bot=bot, from_userid=from_userid, group=group)
+            accepted_args = determine_accepted_args(cmd['def'], logger=logger, args=args, bot=bot,
+                                                    from_userid=from_userid, group=group, message_id=message_id)
+            await cmd['def'](**accepted_args)
             return
 
 
-async def process_message(type, message, bot, from_userid, group):
+async def process_message(type, message, bot, from_userid, group, message_id):
     for msg in messages:
-        await msg['def'](message_type=type, logger=logger, message=message, bot=bot, from_userid=from_userid, group=group)
+        accepted_args = determine_accepted_args(msg['def'], message_type=type, logger=logger, message=message, bot=bot,
+                                                from_userid=from_userid, group=group, message_id=message_id)
+        await msg['def'](**accepted_args)
         return
 
 
@@ -672,7 +749,9 @@ logger.success(
     '成功加载' + str(len(asyncio.run(bot.getfriends()))) + '个好友,' + str(len(asyncio.run(bot.getgroups()))) + '个群')
 
 
+i = None
 async def message_loop():
+    global i
     global userid
     global packageId
     global token
@@ -952,9 +1031,11 @@ async def message_loop():
                                     'zaly_site_user': token
                                 })
                         if type == 'html':
-                            await process_message('html', i['web']['code'], bot,i['fromUserId'], group)
+                            await process_message('html', i['web']['code'], bot, i['fromUserId'], group, i['msgId'])
                         else:
-                            await process_message('gif', open("images" + os.sep + '[' + i['msgId'] + ']' + filename, 'wb'), bot, i['fromUserId'], group)
+                            await process_message('gif',
+                                                  open("images" + os.sep + '[' + i['msgId'] + ']' + filename, 'wb'),
+                                                  bot, i['fromUserId'], group, i['msgId'])
                     elif i['type'] == 'MessageDocument':
                         group = None
                         file = None
@@ -1079,7 +1160,9 @@ async def message_loop():
                                 })
                         with open('files' + os.sep + '[' + i['msgId'] + ']' + i['document']['name'], 'wb') as f:
                             f.write(file.content)
-                        await process_message('file', open('files' + os.sep + '[' + i['msgId'] + ']' + i['document']['name'], 'rb'), bot, i['fromUserId'], group)
+                        await process_message('file',
+                                              open('files' + os.sep + '[' + i['msgId'] + ']' + i['document']['name'],
+                                                   'rb'), bot, i['fromUserId'], group, i['msgId'])
                     elif i['type'] == 'MessageImage':
                         group = None
                         file = None
@@ -1203,7 +1286,9 @@ async def message_loop():
                                 })
                         with open('images' + os.sep + '[' + i['msgId'] + ']' + i['image']['url'], 'wb') as f:
                             f.write(file.content)
-                        await process_message('image', open('images' + os.sep + '[' + i['msgId'] + ']' + i['image']['url'], 'rb'), bot, i['fromUserId'], group)
+                        await process_message('image',
+                                              open('images' + os.sep + '[' + i['msgId'] + ']' + i['image']['url'],
+                                                   'rb'), bot, i['fromUserId'], group, i['msgId'])
                     elif i['type'] == 'MessageText':
                         group = None
                         if i['msgId'].startswith('GROUP-'):
@@ -1244,6 +1329,7 @@ async def message_loop():
                                     },
                                     "packageId": packageId
                                 })
+                            packageId += 1
                             res = requests.post(
                                 url='http://chat.thisit.cc/index.php?action=api.group.profile&body_format=json&lang=1',
                                 json={
@@ -1314,11 +1400,120 @@ async def message_loop():
                             logger.info(
                                 "来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的消息:" + i['text'][
                                     'body'])
-                        await process_message('text', i['text']['body'], bot, i['fromUserId'], group)
+                        await process_message('text', i['text']['body'], bot, i['fromUserId'], group, i['msgId'])
                         if i['text']['body'].startswith("/"):
                             args = i['text']['body'][1:].split(' ')
                             command = args[0]
-                            await process_command(command, args[1:], bot, i['fromUserId'], group)
+                            await process_command(command, args[1:], bot, i['fromUserId'], group, i['msgId'])
+                    elif i['type'] == 'MessageRecall':
+                        if i['msgId'].startswith('G'):
+                            requests.post(
+                                url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                                json={
+                                    "action": "im.cts.updatePointer",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                        "u2Pointer": 0,
+                                        "groupsPointer": {
+                                            i['toGroupId']: i['pointer']
+                                        }
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                    },
+                                    "packageId": packageId
+                                })
+                            packageId += 1
+                            ress = requests.post(
+                                url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
+                                json={
+                                    "action": "api.friend.profile",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
+                                        "userId": i['fromUserId']
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+                                    },
+                                    "packageId": packageId
+                                })
+                            packageId += 1
+                            res = requests.post(
+                                url='http://chat.thisit.cc/index.php?action=api.group.profile&body_format=json&lang=1',
+                                json={
+                                    "action": "api.group.profile",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ApiGroupProfileRequest",
+                                        "groupId": i['toGroupId']
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                    },
+                                    "packageId": packageId
+                                })
+                            packageId += 1
+                            if i['fromUserId'] == userid:
+                                logger.info(
+                                    "撤回群" + res.json()['body']['profile']['name'] + "的消息:" + i['recall']['msgId'])
+                                continue
+                            logger.info(
+                                "用户" + ress.json()['body']['profile']['profile']['nickname'] + "在群" +
+                                res.json()['body']['profile']['name'] + "中撤回:" + i['recall']['msgId'])
+                            await process_message('recall', i['recall']['msgId'], bot, i['fromUserId'], i['toGroupId'], i['msgId'])
+                        else:
+                            requests.post(
+                                url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                                json={
+                                    "action": "im.cts.updatePointer",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                        "u2Pointer": i['pointer'],
+                                        "groupsPointer": {}
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                    },
+                                    "packageId": packageId
+                                })
+                            packageId += 1
+                            ress = requests.post(
+                                url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
+                                json={
+                                    "action": "api.friend.profile",
+                                    "body": {
+                                        "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
+                                        "userId": i['fromUserId']
+                                    },
+                                    "header": {
+                                        "_3": token,
+                                        "_4": "http://chat.thisit.cc/index.php",
+                                        "_8": "1",
+                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+                                    },
+                                    "packageId": packageId
+                                })
+                            packageId += 1
+                            if i['fromUserId'] == userid:
+                                logger.info(
+                                    "撤回与" + ress.json()['body']['profile']['profile']['nickname'] + "的对话中的消息:" + i['recall']['msgId'])
+                                continue
+                            logger.info(
+                                "用户" + ress.json()['body']['profile']['profile']['nickname'] + "撤回了消息:" + i['recall']['msgId'])
+                            await process_message('recall', i['recall']['msgId'], bot, i['fromUserId'], None,
+                                                  i['msgId'])
+
         except KeyError as e:
             if response.json()['header']['_1'] == 'error.session':
                 if config['auto_login']:
@@ -1372,8 +1567,49 @@ async def message_loop():
                 else:
                     logger.error('获取消息失败,session错误!')
                     sys.exit()
+            elif str(e) == '\'type\'':
+                if i['msgId'].startswith('G'):
+                    requests.post(
+                        url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                        json={
+                            "action": "im.cts.updatePointer",
+                            "body": {
+                                "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                "u2Pointer": 0,
+                                "groupsPointer": {
+                                    i['toGroupId']: i['pointer']
+                                }
+                            },
+                            "header": {
+                                "_3": token,
+                                "_4": "http://chat.thisit.cc/index.php",
+                                "_8": "1",
+                                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                            },
+                            "packageId": packageId
+                        })
+                else:
+                    requests.post(
+                        url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                        json={
+                            "action": "im.cts.updatePointer",
+                            "body": {
+                                "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                "u2Pointer": i['pointer'],
+                                "groupsPointer": {}
+                            },
+                            "header": {
+                                "_3": token,
+                                "_4": "http://chat.thisit.cc/index.php",
+                                "_8": "1",
+                                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                            },
+                            "packageId": packageId
+                        })
+                packageId += 1
+                logger.warn('出现了一个无法解析的消息,该消息没有键: ' + str(e))
             else:
-                logger.warn('出现了一个无法解析的消息!' + str(e))
+                logger.warn('出现了一个无法解析的消息,该消息没有键: ' + str(e))
         await asyncio.sleep(config['wait_time'] / 1000)
 
 
