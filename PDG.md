@@ -36,7 +36,7 @@ class MyPlugin:
 
     async def say_hello(self, logger, args, bot, from_userid, group):
         # 当'/hello'命令被调用时执行此方法
-        # 'logger' 是一个日志输出对象,可以用logger.success()、logger.info()、logger.warn()、logger.error()来输出对应等级的日志
+        # 'logger' 是一个日志输出对象,可以用logger.success()、logger.info()、logger.warn()、logger.error()、logger.input()、logger.password()来输入或输出输出对应等级的日志
         # 'args' 是一个包含命令后提供的参数的列表（例如 ['John']）。
         # 'bot' 是用于向聊天发送消息的机器人对象。
         # 'from_userid' 是发送命令的用户ID。
@@ -51,9 +51,9 @@ class MyPlugin:
 
     async def write_file(self, message_type, logger, message, bot, from_userid, group):
         # 当有人发消息时时执行此方法
-        # 'message_type' 是消息的类型,有text(文本),file(文件),image(图片),html,gif(表情), recall(撤回)几个类型
-        # 'logger' 是一个日志输出对象,可以用logger.success()、logger.info()、logger.warn()、logger.error()来输出对应等级的日志
-        # 'message' 是对方发送的消息
+        # 'message_type' 是消息的类型, 有text(文本), file(文件), image(图片), html, gif(表情), recall(撤回), add_friend(添加好友)几个类型
+        # 'logger' 是一个日志输出对象,可以用logger.success()、logger.info()、logger.warn()、logger.error()、logger.input()、logger.password()来输入或输出对应等级的日志
+        # 'message' 是对方发送的消息(如果是add_friend则是是否自动添加)
         # 'bot' 是用于向聊天发送消息的机器人对象。
         # 'from_userid' 是发送命令的用户ID。
         # 在这里实现命令功能。
@@ -90,6 +90,9 @@ class MyPlugin:
    - `message_id`: 撤回的消息id
    - `group_id`: 消息所在的群,私聊就传入None
    - `user_id`: 消息发给的用户(group_id是None才启用)
+   #### `accept`: 同意好友申请, 传入agree、user_id两个参数, 返回是否成功
+   - `agree`: 是否同意该好友申请
+   - `user_id`: 统一的用户id
 
 
 ## 2. 在插件的`onEnable`方法中，返回一个包含支持的命令字典的列表。根据插件的需求添加所需的命令。

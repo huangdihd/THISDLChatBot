@@ -16,17 +16,17 @@ try:
     colorama.init()
 except ModuleNotFoundError:
     now = datetime.now()
-    print(f"[{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}][WARN]检测到缺少模块:colorama,开始安装!")
+    print(f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][WARN]检测到缺少模块:colorama,开始安装!")
     install = os.system(sys.executable + " -m pip install colorama")
     if install != 0:
-        print(f"[{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}][ERROR]安装失败!")
+        print(f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][ERROR]安装失败!")
         sys.exit(1)
     else:
         import colorama
 
         colorama.init()
         print(
-            f"[{colorama.Fore.RESET}{now.year}:{now.month}:{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}]安装成功!")
+            f"[{colorama.Fore.RESET}{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}]安装成功!")
 
 
 # 创建Logger对象
@@ -34,32 +34,32 @@ class Logger:
     def success(self, out):
         now = datetime.now()
         print(
-            colorama.Fore.RESET + f"[{now.year}:{now.month}:{now.day}:{now.hour}:{now.minute}:{now.second}][{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}]" + out)
+            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}]" + out)
 
     def info(self, out):
         now = datetime.now()
         print(
-            colorama.Fore.RESET + f"[{now.year}:{now.month}:{now.day}:{now.hour}:{now.minute}:{now.second}][{colorama.Fore.BLUE}INFO{colorama.Fore.RESET}]" + out)
+            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.BLUE}INFO{colorama.Fore.RESET}]" + out)
 
     def warn(self, out):
         now = datetime.now()
         print(
-            colorama.Fore.RESET + f"[{now.year}:{now.month}:{now.day}:{now.hour}:{now.minute}:{now.second}][{colorama.Fore.YELLOW}WARN{colorama.Fore.RESET}]" + out)
+            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.YELLOW}WARN{colorama.Fore.RESET}]" + out)
 
     def error(self, out):
         now = datetime.now()
         print(
-            colorama.Fore.RESET + f"[{now.year}:{now.month}:{now.day}:{now.hour}:{now.minute}:{now.second}][{colorama.Fore.RED}ERROR{colorama.Fore.RESET}]" + out)
+            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.RED}ERROR{colorama.Fore.RESET}]" + out)
 
     def input(self, out):
         now = datetime.now()
         return input(
-            colorama.Fore.RESET + f"[{now.year}:{now.month}:{now.day}:{now.hour}:{now.minute}:{now.second}][{colorama.Fore.MAGENTA}INPUT{colorama.Fore.RESET}]" + out)
+            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.MAGENTA}INPUT{colorama.Fore.RESET}]" + out)
 
     def password(self, out):
         now = datetime.now()
         return getpass.getpass(
-            colorama.Fore.RESET + f"[{now.year}:{now.month}:{now.day}:{now.hour}:{now.minute}:{now.second}][{colorama.Fore.LIGHTMAGENTA_EX}PASSWORD{colorama.Fore.RESET}]" + out)
+            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.LIGHTMAGENTA_EX}PASSWORD{colorama.Fore.RESET}]" + out)
 
 
 logger = Logger()
@@ -681,6 +681,27 @@ class Bot:
             })
         packageId += 1
 
+    async def accept(self, agree: bool, user_id: str):
+        global token, packageId
+        response = requests.post(
+            url="http://chat.thisit.cc/index.php?action=api.friend.accept&body_format=json&lang=1",
+            json={
+                "action": "api.friend.accept",
+                "body": {
+                    "@type": "type.googleapis.com/site.ApiFriendAcceptRequest",
+                    "applyUserId": user_id,
+                    "agree": agree
+                },
+                "header": {
+                    "_3": token,
+                    "_4": "http://chat.thisit.cc/index.php",
+                    "_8": "1",
+                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                },
+                "packageId": packageId
+            })
+        packageId += 1
+        return response.json()['header']['_1'] == 'success'
 
 bot = Bot()
 # 加载插件
@@ -793,26 +814,18 @@ async def message_loop():
                         })
                     packageId += 1
                     if i['type'] == 'MessageEventFriendRequest':
+                        if i['fromUserId'] == userid:
+                            packageId += 1
+                            logger.info("发送到用户" + bot.getuserprofile(userid)['nickname'] + "的好友申请!")
+                            continue
                         logger.info("收到来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的好友申请!")
                         if config['auto_accept']:
-                            requests.post(
-                                url="http://chat.thisit.cc/index.php?action=api.friend.accept&body_format=json&lang=1",
-                                json={
-                                    "action": "api.friend.accept",
-                                    "body": {
-                                        "@type": "type.googleapis.com/site.ApiFriendAcceptRequest",
-                                        "applyUserId": i['fromUserId'],
-                                        "agree": True
-                                    },
-                                    "header": {
-                                        "_3": token,
-                                        "_4": "http://chat.thisit.cc/index.php",
-                                        "_8": "1",
-                                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-                                    },
-                                    "packageId": packageId
-                                })
+                            await bot.accept(True, i['fromUserId'])
                             packageId += 1
+                            logger.info('已自动同意')
+                            await process_message('add_friend', True, bot, i['fromUserId'], None, i['msgId'])
+                        else:
+                            await process_message('add_friend', False, bot, i['fromUserId'], None, i['msgId'])
                     elif i['type'] == 'MessageNotice':
                         logger.info('收到一个消息:' + i['notice']['body'])
                         if i['msgId'].startswith('GP-'):
