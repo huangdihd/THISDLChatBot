@@ -33,33 +33,45 @@ except ModuleNotFoundError:
 class Logger:
     def success(self, out):
         now = datetime.now()
-        print(
-            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}]" + out)
+        for i in out.split('\n'):
+            print(
+                colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}]" + i)
 
     def info(self, out):
         now = datetime.now()
-        print(
-            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.BLUE}INFO{colorama.Fore.RESET}]" + out)
+        for i in out.split('\n'):
+            print(
+                colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.BLUE}INFO{colorama.Fore.RESET}]" + i)
 
     def warn(self, out):
         now = datetime.now()
-        print(
-            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.YELLOW}WARN{colorama.Fore.RESET}]" + out)
+        for i in out.split('\n'):
+            print(
+                colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.YELLOW}WARN{colorama.Fore.RESET}]" + i)
 
     def error(self, out):
         now = datetime.now()
-        print(
-            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.RED}ERROR{colorama.Fore.RESET}]" + out)
+        for i in out.split('\n'):
+            print(
+                colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.RED}ERROR{colorama.Fore.RESET}]" + i)
 
     def input(self, out):
         now = datetime.now()
+        for i in out.split('\n')[:-1]:
+            print(
+                colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.MAGENTA}INPUT{colorama.Fore.RESET}]" + i)
         return input(
-            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.MAGENTA}INPUT{colorama.Fore.RESET}]" + out)
+            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.MAGENTA}INPUT{colorama.Fore.RESET}]" +
+            out.split('\n')[-1])
 
     def password(self, out):
         now = datetime.now()
+        for i in out.split('\n')[:-1]:
+            print(
+                colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.LIGHTMAGENTA_EX}PASSWORD{colorama.Fore.RESET}]" + i)
         return getpass.getpass(
-            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.LIGHTMAGENTA_EX}PASSWORD{colorama.Fore.RESET}]" + out)
+            colorama.Fore.RESET + f"[{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}][{colorama.Fore.LIGHTMAGENTA_EX}PASSWORD{colorama.Fore.RESET}]" +
+            out.split('\n')[-1])
 
 
 logger = Logger()
@@ -317,6 +329,7 @@ class Bot:
     async def getfriends(self):
         global packageId
         global token
+        global userid
         res = requests.post('http://chat.thisit.cc/index.php?action=api.friend.list&body_format=json&lang=1', json={
             "action": "api.friend.list",
             "body": {
@@ -333,7 +346,11 @@ class Bot:
             "packageId": packageId
         })
         packageId += 1
-        return res.json()['body']['friends']
+        r = []
+        for i in res.json()['body']['friends']:
+            if i['profile']['userId'] != userid:
+                r.append(i)
+        return r
 
     async def getgroups(self):
         global packageId
@@ -703,6 +720,7 @@ class Bot:
         packageId += 1
         return response.json()['header']['_1'] == 'success'
 
+
 bot = Bot()
 # 加载插件
 logger.info("开始加载插件...")
@@ -769,8 +787,9 @@ packageId = 1
 logger.success(
     '成功加载' + str(len(asyncio.run(bot.getfriends()))) + '个好友,' + str(len(asyncio.run(bot.getgroups()))) + '个群')
 
-
 i = None
+
+
 async def message_loop():
     global i
     global userid
@@ -819,9 +838,26 @@ async def message_loop():
                             logger.info("发送到用户" + bot.getuserprofile(userid)['nickname'] + "的好友申请!")
                             continue
                         logger.info("收到来自用户" + res.json()['body']['profile']['profile']['nickname'] + "的好友申请!")
+                        requests.post(
+                            url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
+                            json={
+                                "action": "im.cts.updatePointer",
+                                "body": {
+                                    "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                                    "u2Pointer": i['pointer'],
+                                    "groupsPointer": {}
+                                },
+                                "header": {
+                                    "_3": token,
+                                    "_4": "http://chat.thisit.cc/index.php",
+                                    "_8": "1",
+                                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+                                },
+                                "packageId": packageId
+                            })
+                        packageId += 1
                         if config['auto_accept']:
                             await bot.accept(True, i['fromUserId'])
-                            packageId += 1
                             logger.info('已自动同意')
                             await process_message('add_friend', True, bot, i['fromUserId'], None, i['msgId'])
                         else:
@@ -1481,7 +1517,8 @@ async def message_loop():
                             logger.info(
                                 "用户" + ress.json()['body']['profile']['profile']['nickname'] + "在群" +
                                 res.json()['body']['profile']['name'] + "中撤回:" + i['recall']['msgId'])
-                            await process_message('recall', i['recall']['msgId'], bot, i['fromUserId'], i['toGroupId'], i['msgId'])
+                            await process_message('recall', i['recall']['msgId'], bot, i['fromUserId'], i['toGroupId'],
+                                                  i['msgId'])
                         else:
                             requests.post(
                                 url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
@@ -1520,10 +1557,12 @@ async def message_loop():
                             packageId += 1
                             if i['fromUserId'] == userid:
                                 logger.info(
-                                    "撤回与" + ress.json()['body']['profile']['profile']['nickname'] + "的对话中的消息:" + i['recall']['msgId'])
+                                    "撤回与" + ress.json()['body']['profile']['profile']['nickname'] + "的对话中的消息:" +
+                                    i['recall']['msgId'])
                                 continue
                             logger.info(
-                                "用户" + ress.json()['body']['profile']['profile']['nickname'] + "撤回了消息:" + i['recall']['msgId'])
+                                "用户" + ress.json()['body']['profile']['profile']['nickname'] + "撤回了消息:" + i['recall'][
+                                    'msgId'])
                             await process_message('recall', i['recall']['msgId'], bot, i['fromUserId'], None,
                                                   i['msgId'])
 
