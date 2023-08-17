@@ -277,6 +277,15 @@ def image_to_ascii(image_path, new_width=config['width']):
     return ascii_img
 
 
+# 检测更新
+try:
+    version = requests.get(url='https://plugin.dicloud.vip/THISDLChatBot').text
+    if version != '1.8':
+        logger.warn(f"检测到新版本,{version},下载地址:https://github.com/huangdihd/THISDLChatBot/releases/download/{version}/main.py!")
+except Exception as e:
+    logger.warn('检测更新失败: ' + str(e))
+
+
 # 登录
 logger.info("开始登录流程...")
 logger.info("账号: " + config['username'])
@@ -323,6 +332,7 @@ token = token.cookies['zaly_site_user']
 logger.info("token:" + token)
 logger.success("登录成功")
 
+packageId = 1
 
 # 创建bot对象
 class Bot:
@@ -783,7 +793,6 @@ def onExit():
 atexit.register(onExit)
 
 # 消息获取循环
-packageId = 1
 logger.success(
     '成功加载' + str(len(asyncio.run(bot.getfriends()))) + '个好友,' + str(len(asyncio.run(bot.getgroups()))) + '个群')
 
@@ -1662,8 +1671,6 @@ async def message_loop():
                 logger.warn('出现了一个无法解析的消息,该消息没有键: ' + str(e))
             else:
                 logger.warn('出现了一个无法解析的消息,该消息没有键: ' + str(e))
-        except Exception as e:
-            logger.error('出现了一个错误: ' + str(e))
         await asyncio.sleep(config['wait_time'] / 1000)
 
 
