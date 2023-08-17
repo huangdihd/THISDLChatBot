@@ -1662,6 +1662,8 @@ async def message_loop():
                 logger.warn('出现了一个无法解析的消息,该消息没有键: ' + str(e))
             else:
                 logger.warn('出现了一个无法解析的消息,该消息没有键: ' + str(e))
+        except Exception as e:
+            logger.error('出现了一个错误: ' + str(e))
         await asyncio.sleep(config['wait_time'] / 1000)
 
 
