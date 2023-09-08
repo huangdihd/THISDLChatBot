@@ -281,10 +281,10 @@ def image_to_ascii(image_path, new_width=config['width']):
 try:
     version = requests.get(url='https://plugin.dicloud.vip/THISDLChatBot').text
     if version != '1.8':
-        logger.warn(f"检测到新版本: {version},下载地址:https://github.com/huangdihd/THISDLChatBot/releases/download/{version}/main.py!")
+        logger.warn(
+            f"检测到新版本: {version},下载地址:https://github.com/huangdihd/THISDLChatBot/releases/download/{version}/main.py!")
 except Exception as e:
     logger.warn('检测更新失败: ' + str(e))
-
 
 # 登录
 logger.info("开始登录流程...")
@@ -334,6 +334,7 @@ logger.success("登录成功")
 
 packageId = 1
 
+
 # 创建bot对象
 class Bot:
     async def getfriends(self):
@@ -357,9 +358,12 @@ class Bot:
         })
         packageId += 1
         r = []
-        for i in res.json()['body']['friends']:
-            if i['profile']['userId'] != userid:
-                r.append(i)
+        try:
+            for i in res.json()['body']['friends']:
+                if i['profile']['userId'] != userid:
+                    r.append(i)
+        except KeyError:
+            return []
         return r
 
     async def getgroups(self):
@@ -381,7 +385,10 @@ class Bot:
             "packageId": packageId
         })
         packageId += 1
-        return res.json()['body']['list']
+        try:
+            return res.json()['body']['list']
+        except KeyError:
+            return []
 
     async def getuserprofile(self, user_id):
         global packageId
@@ -436,6 +443,7 @@ class Bot:
         global userid
         if type == "text":
             if group is None:
+                msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
                 requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
                               json={
                                   "action": "im.cts.message",
@@ -445,7 +453,7 @@ class Bot:
                                           "fromUserId": userid,
                                           "roomType": "MessageRoomU2",
                                           "toUserId": to_userid,
-                                          "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
+                                          "msgId": msg_id,
                                           "timeServer": round(time.time(), 3) * 1000,
                                           "text": {
                                               "body": data
@@ -462,8 +470,9 @@ class Bot:
                                   "packageId": packageId
                               })
                 packageId += 1
-                return True
+                return msg_id
             else:
+                msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
                 requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
                               json={
                                   "action": "im.cts.message",
@@ -473,7 +482,7 @@ class Bot:
                                           "fromUserId": userid,
                                           "roomType": "MessageRoomGroup",
                                           "toGroupId": group,
-                                          "msgId": f"GROUP-{math.floor(round(time.time(), 3) * 1000)}",
+                                          "msgId": msg_id,
                                           "timeServer": round(time.time(), 3) * 1000,
                                           "text": {
                                               "body": data
@@ -490,7 +499,7 @@ class Bot:
                                   "packageId": packageId
                               })
                 packageId += 1
-                return True
+                return msg_id
         elif type == 'file':
             da = {
                 'fileType': '3',
@@ -507,6 +516,7 @@ class Bot:
                 raise ValueError(response.json()['errorInfo'])
             data.seek(0, 2)
             if group is None:
+                msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
                 requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
                               json={
                                   "action": "im.cts.message",
@@ -535,8 +545,9 @@ class Bot:
                                   "packageId": packageId
                               })
                 packageId += 1
-                return True
+                return msg_id
             else:
+                msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
                 requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
                               json={
                                   "action": "im.cts.message",
@@ -546,7 +557,7 @@ class Bot:
                                           "fromUserId": userid,
                                           "roomType": "MessageRoomGroup",
                                           "toGroupId": group,
-                                          "msgId": f"GROUP-{math.floor(round(time.time(), 3) * 1000)}",
+                                          "msgId": msg_id,
                                           "timeServer": round(time.time(), 3) * 1000,
                                           "document": {
                                               "url": response.json()['fileId'],
@@ -565,7 +576,7 @@ class Bot:
                                   "packageId": packageId
                               })
                 packageId += 1
-                return True
+                return msg_id
         elif type == 'image':
             da = {
                 'fileType': '1',
@@ -581,6 +592,7 @@ class Bot:
             if response.json()['errorInfo'] != '':
                 raise ValueError(response.json()['errorInfo'])
             if group is None:
+                msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
                 requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
                               json={
                                   "action": "im.cts.message",
@@ -590,7 +602,7 @@ class Bot:
                                           "fromUserId": userid,
                                           "roomType": "MessageRoomU2",
                                           "toUserId": to_userid,
-                                          "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
+                                          "msgId": msg_id,
                                           "timeServer": round(time.time(), 3) * 1000,
                                           "image": {
                                               "url": response.json()['fileId'],
@@ -609,8 +621,9 @@ class Bot:
                                   "packageId": packageId
                               })
                 packageId += 1
-                return True
+                return msg_id
             else:
+                msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
                 requests.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
                               json={
                                   "action": "im.cts.message",
@@ -620,7 +633,7 @@ class Bot:
                                           "fromUserId": userid,
                                           "roomType": "MessageRoomGroup",
                                           "toGroupId": group,
-                                          "msgId": f"GROUP-{math.floor(round(time.time(), 3) * 1000)}",
+                                          "msgId": msg_id,
                                           "timeServer": round(time.time(), 3) * 1000,
                                           "image": {
                                               "url": response.json()['fileId'],
@@ -639,7 +652,7 @@ class Bot:
                                   "packageId": packageId
                               })
                 packageId += 1
-                return True
+                return msg_id
         else:
             raise ValueError("Message_type_error")
 
@@ -742,6 +755,10 @@ for filename in os.listdir("plugins"):
             plugin = plugin()
             plugins[filename[:-3]] = plugin
             plugin.onLoad(logger=logger, bot=bot)
+            if not os.path.isdir('data' + os.sep + filename[:-3]):
+                if os.path.exists('data' + os.sep + filename[:-3]):
+                    os.remove('data' + os.sep + filename[:-3])
+                os.mkdir('data' + os.sep + filename[:-3])
             logger.success("成功加载插件" + filename[:-3] + "!")
 logger.success("所有插件都加载完了!")
 

@@ -69,7 +69,7 @@ class MyPlugin:
 ```
    ### 为了方便开发，这里给出 bot 的所有方法：
 
-   #### `send`: 发送消息,传入 type、data、to_userid、group 四个参数
+   #### `send`: 发送消息,传入 type、data、to_userid、group 四个参数, 返回消息message_id
 
    - `type`: 消息类型，有 text(文本)、image(图片)、file(文件) 几个类型
    - `data`: 内容，如果是文件或图片，请使用 `open('路径', 'rb')` 打开
