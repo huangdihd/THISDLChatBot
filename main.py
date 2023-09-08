@@ -280,7 +280,7 @@ def image_to_ascii(image_path, new_width=config['width']):
 # 检测更新
 try:
     version = requests.get(url='https://plugin.dicloud.vip/THISDLChatBot').text
-    if version != '1.8':
+    if version != '1.9':
         logger.warn(
             f"检测到新版本: {version},下载地址:https://github.com/huangdihd/THISDLChatBot/releases/download/{version}/main.py!")
 except Exception as e:
