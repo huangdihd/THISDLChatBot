@@ -1,5 +1,5 @@
 # THISDLChatBot  
-一个基于python的THISDLChatRoom(现已关闭,~~完了我成小丑了~~)的异步聊天机器人开源框架  
+一个基于python的THISDLChatRoom的异步聊天机器人开源框架  
 ## 使用教程  
 ### 1.安装3.7以上版本的python
 #### 这个不用我教了吧,我相信你能搞定的  
