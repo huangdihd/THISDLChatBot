@@ -7,7 +7,7 @@
 #### 在你的电脑/服务器的终端上运行 `git clone https://github.com/huangdihd/THISDLChatBot.git`
 #### 如果你实在是懒得装git也可以直接下载[Releases](https://github.com/huangdihd/THISDLChatBot/releases)中的文件
 ### 3.运行
-#### 直接启动main.py就可以了 `python3 main.py`
+#### 直接~~原神~~启动main.py就可以了 `python3 main.py`
 ### 4.安装前置库
 #### 想什么呢,这个当然是程序自动执行了,报错了解决一下就行
 ### 5.创建配置文件
