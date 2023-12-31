@@ -1,4 +1,5 @@
 # THISDLChatBot  
+![THISDLChatBot](/logo.jpg)
 一个基于python的THISDLChatRoom的异步聊天机器人开源框架  
 ## 使用教程  
 ### 1.安装3.7以上版本的python
