@@ -20,14 +20,14 @@ class Message:
             return 'Group'
         return 'Private'
 
-    def GetFromUser(self):
-        return asyncio.run(self.bot.GetFriendProfile(self.RawMessage.get('fromUserId')))
+    async def GetFromUser(self):
+        return await self.bot.GetFriendProfile(self.RawMessage.get('fromUserId'))
+
+    async def GetFromGroup(self):
+        return await self.bot.GetGroupProfile(self.RawMessage.get('toGroupId'))
 
     def GetPointer(self) -> str:
         return self.RawMessage['pointer']
-
-    def GetFromGroup(self):
-        return asyncio.run(self.bot.GetGroupProfile(self.RawMessage.get('toGroupId')))
 
     def GetData(self):
         if self.GetType() == 'MessageText':
