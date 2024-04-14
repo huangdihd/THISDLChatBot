@@ -2,19 +2,19 @@
 ![THISDLChatBot](/logo.jpg)
 一个基于python的THISDLChatRoom的异步聊天机器人开源框架  
 ## 使用教程  
-### 1.安装3.7以上版本的python
+## 本项目刚进行重构,可能有问题,如果你希望稳定的使用的话依旧可以使用旧版
+### 1.安装3.7以上版本的python和pip
 #### 这个不用我教了吧,我相信你能搞定的  
-### 2.克隆仓库中的程序
-#### 在你的电脑/服务器的终端上运行 `git clone https://github.com/huangdihd/THISDLChatBot.git`
-#### 如果你实在是懒得装git也可以直接下载[Releases](https://github.com/huangdihd/THISDLChatBot/releases)中的文件
-### 3.运行
-#### 直接~~原神~~启动main.py就可以了 `python3 main.py`
-### 4.安装前置库
-#### 想什么呢,这个当然是程序自动执行了,报错了解决一下就行
+### 2.用pip安装THISDLChatBot
+#### 在你的电脑/服务器的终端上运行 `pip install THISDLChatBot`
+### 3.创建入口文件
+#### 可以下载仓库中的bot.py进行修改, 也可以自己写
+### 4.运行
+#### 直接~~原神~~启动入口文件就可以了 `python3 bot.py`
 ### 5.创建配置文件
 #### 首次运行程序是没有配置文件的(~~废话~~),程序会引导创建配置文件
 ### 6.自己写或者找网上写好的插件
-#### 想自己写的话可以看看[插件开发指南](https://github.com/huangdihd/THISDLChatBot/blob/main/PDG.md)
+#### 想自己写的话可以看看[插件开发指南](https://github.com/huangdihd/THISDLChatBot/blob/main/PDG.md)\(以后写,与1的插件不通用\)
 ## 遇到问题
 ### 去Issues提干嘛?愣着啊!
 ## 建议和意见
