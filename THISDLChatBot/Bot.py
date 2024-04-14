@@ -34,6 +34,8 @@ class Bot:
                     continue
                 if message.IsCommand():
                     await self._CommandProcessor(message)
+                if message.GetType() == 'MessageEventFriendRequest' and self.config['auto_accept']:
+                    await self.Accept(True, (await message.GetFromUser()).GetUserId())
                 await self._MessageProcessor(message)
             await asyncio.sleep(self.config['wait_time'] / 1000)
 

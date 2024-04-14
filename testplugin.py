@@ -11,7 +11,7 @@ async def OnLoad():
 
 @plugin.OnCommand('hello')
 async def hello(bot: Bot, message: Message):
-    await bot.SendImage(await message.GetFromUser(), open('/home/huangdi/icon@8x.png', 'rb'))
+    await bot.SendImage(await message.GetFromUser(), open('logo.jpg', 'rb'))
 
 
 @plugin.OnMessage()
