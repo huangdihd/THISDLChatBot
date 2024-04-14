@@ -197,7 +197,7 @@ class Bot:
         cookies = {'zaly_site_user': self.token}
         return (await self._httpclient.get(Url, cookies=cookies)).content
 
-    async def GetFriends(self) -> list[Any] | list[Coroutine[Any, Any, Friend]]:
+    async def GetFriends(self):
         response = await self._httpclient.post(
             'http://chat.thisit.cc/index.php?action=api.friend.list&body_format=json&lang=1', json={
                 "action": "api.friend.list",
