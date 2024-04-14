@@ -124,7 +124,7 @@ class Bot:
                 pass
 
     async def _UpLoadFile(self, File: _io.BufferedReader, FileType: int, FileName: str) -> str:
-        JsonData = {
+        Data = {
             'fileType': FileType,
             'isMessageAttachment': 'true'
         }
@@ -132,7 +132,7 @@ class Bot:
             'file': (FileName, File, 'application/octet-stream')
         }
         response = await self._httpclient.post('http://chat.thisit.cc/index.php?action=http.file.uploadWeb', files=file,
-                                               data=JsonData, cookies={'zaly_site_user': self.token})
+                                               data=Data, cookies={'zaly_site_user': self.token})
         if response.json()['errorInfo'] != '':
             raise UpLoadFileFailedException(response.json()['errorInfo'])
         return response.json()['fileId']
