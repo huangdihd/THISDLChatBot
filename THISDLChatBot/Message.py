@@ -17,14 +17,14 @@ class Message:
             return 'Group'
         return 'Private'
 
-    async def GetFromUser(self):
-        return await self.bot.GetFriendProfile(self.RawMessage.get('fromUserId'))
+    def GetFromUser(self):
+        return self.bot.loop.run_until_complete(self.bot.GetFriendProfile(self.RawMessage.get('fromUserId')))
 
     def GetPointer(self) -> str:
         return self.RawMessage['pointer']
 
-    async def GetFromGroup(self):
-        return await self.bot.GetGroupProfile(self.RawMessage.get('toGroupId'))
+    def GetFromGroup(self):
+        return self.bot.loop.run_until_complete(self.bot.GetGroupProfile(self.RawMessage.get('toGroupId')))
 
     def GetData(self):
         if self.GetType() == 'MessageText':
