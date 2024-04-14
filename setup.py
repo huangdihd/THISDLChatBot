@@ -9,5 +9,5 @@ setup(
     author_email='hd20100104@163.com',
     license='GPLv2',
     packages=['THISDLChatBot'],
-    install_requires=['colorama', 'requests', 'httpx', 'pillow', 'beautifulsoup4']
+    install_requires=['colorama', 'httpx', 'pillow', 'beautifulsoup4']
 )
