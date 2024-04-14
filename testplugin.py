@@ -11,7 +11,12 @@ async def OnLoad():
 
 @plugin.OnCommand('hello')
 async def hello(bot: Bot, message: Message):
-    await bot.SendText(await message.GetFromUser(), 'hello')
+    await bot.SendImage(await message.GetFromUser(), open('/home/huangdi/icon@8x.png', 'rb'))
+
+
+@plugin.OnMessage()
+async def log(bot: Bot, message: Message):
+    bot.logger.info(message)
 
 
 plugin.OnLoad = OnLoad

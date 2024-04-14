@@ -30,6 +30,8 @@ class Bot:
             for RawMessage in messages:
                 message = Message(RawMessage, self)
                 await self._UpdatePointer(message)
+                if (await message.GetFromUser()).GetUserId() == self.userid:
+                    continue
                 if message.IsCommand():
                     await self._CommandProcessor(message)
                 await self._MessageProcessor(message)
@@ -123,14 +125,14 @@ class Bot:
 
     async def _UpLoadFile(self, File: _io.BufferedReader, FileType: int, FileName: str) -> str:
         JsonData = {
-            'fileType': str(FileType),
+            'fileType': FileType,
             'isMessageAttachment': 'true'
         }
         file = {
             'file': (FileName, File, 'application/octet-stream')
         }
         response = await self._httpclient.post('http://chat.thisit.cc/index.php?action=http.file.uploadWeb', files=file,
-                                               json=JsonData, cookies={'zaly_site_user': self.token})
+                                               data=JsonData, cookies={'zaly_site_user': self.token})
         if response.json()['errorInfo'] != '':
             raise UpLoadFileFailedException(response.json()['errorInfo'])
         return response.json()['fileId']
