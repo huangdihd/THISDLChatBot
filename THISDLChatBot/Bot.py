@@ -1,5 +1,4 @@
 import _io
-from typing import Any, Coroutine
 
 import httpx
 import time
