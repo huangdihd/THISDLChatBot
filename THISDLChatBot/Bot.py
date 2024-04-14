@@ -225,7 +225,7 @@ class Bot:
             return []
         return friends
 
-    async def GetGroups(self) -> list[Group]:
+    async def GetGroups(self):
         response = await self._httpclient.post(
             'http://chat.thisit.cc/index.php?action=api.group.list&body_format=json&lang=1', json={
                 "action": "api.group.list",
