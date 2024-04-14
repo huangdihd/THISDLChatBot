@@ -1,5 +1,0 @@
-colorama
-requests
-httpx
-pillow
-beautifulsoup4
