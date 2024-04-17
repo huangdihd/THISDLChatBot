@@ -1,3 +1,5 @@
+import asyncio
+
 from THISDLChatBot import Plugin
 from THISDLChatBot import Bot
 from THISDLChatBot import Message
@@ -11,6 +13,7 @@ async def OnLoad():
 
 @plugin.OnCommand('hello')
 async def hello(bot: Bot, message: Message):
+    await asyncio.sleep(10)
     await bot.SendImage(await message.GetFromUser(), open('logo.jpg', 'rb'))
 
 

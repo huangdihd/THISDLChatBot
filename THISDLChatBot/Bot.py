@@ -32,22 +32,23 @@ class Bot:
                 if (await message.GetFromUser()).GetUserId() == self.userid:
                     continue
                 if message.IsCommand():
-                    await self._CommandProcessor(message)
+                    self._CommandProcessor(message)
                 if message.GetType() == 'MessageEventFriendRequest' and self.config['auto_accept']:
                     await self.Accept(True, (await message.GetFromUser()).GetUserId())
-                await self._MessageProcessor(message)
+                self._MessageProcessor(message)
             await asyncio.sleep(self.config['wait_time'] / 1000)
 
-    async def _CommandProcessor(self, message: Message):
+    def _CommandProcessor(self, message: Message):
         for plugin in self.plugins:
             for commandProcessor in plugin.CommandProcessors:
                 if (message.GetData() + ' ').startswith(f'/{commandProcessor.command} '):
-                    await commandProcessor.Process((message.GetData() + ' ').split(' ')[1:], message, self)
+                    asyncio.create_task(
+                        commandProcessor.Process((message.GetData() + ' ').split(' ')[1:], message, self))
 
-    async def _MessageProcessor(self, message: Message):
+    def _MessageProcessor(self, message: Message):
         for plugin in self.plugins:
             for messageProcessor in plugin.MessageProcessors:
-                await messageProcessor.Process(message, self)
+                asyncio.create_task(messageProcessor.Process(message, self))
 
     async def _UpdatePointer(self, message: Message):
         if message.GetRoomType() == 'Private':
