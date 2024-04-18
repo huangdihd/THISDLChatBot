@@ -10,37 +10,24 @@ class Logger:
         self.stdout = stdout
         self.stdin = stdin
 
-    def success(self, out):
-        out = str(out)
+    def _output(self, level: str, out: str):
         now = time.localtime()
         for i in out.split('\n'):
             self.stdout.write(
                 colorama.Fore.RESET + f"{time.strftime('[%Y-%m-%d %H:%M:%S]', now)}"
-                + f"[{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}]" + i + '\n')
+                + f"[{level}]" + i + '\n')
+
+    def success(self, out):
+        self._output(f"{colorama.Fore.GREEN}SUCCESS{colorama.Fore.RESET}", str(out))
 
     def info(self, out):
-        out = str(out)
-        now = time.localtime()
-        for i in out.split('\n'):
-            self.stdout.write(
-                colorama.Fore.RESET + f"{time.strftime('[%Y-%m-%d %H:%M:%S]', now)}"
-                + f"[{colorama.Fore.BLUE}INFO{colorama.Fore.RESET}]" + i + '\n')
+        self._output(f"{colorama.Fore.BLUE}INFO{colorama.Fore.RESET}", str(out))
 
     def warn(self, out):
-        out = str(out)
-        now = time.localtime()
-        for i in out.split('\n'):
-            self.stdout.write(
-                colorama.Fore.RESET + f"{time.strftime('[%Y-%m-%d %H:%M:%S]', now)}"
-                + f"[{colorama.Fore.YELLOW}WARN{colorama.Fore.RESET}]" + i + '\n')
+        self._output(f"{colorama.Fore.YELLOW}WARN{colorama.Fore.RESET}", str(out))
 
     def error(self, out):
-        out = str(out)
-        now = time.localtime()
-        for i in out.split('\n'):
-            self.stdout.write(
-                colorama.Fore.RESET + f"{time.strftime('[%Y-%m-%d %H:%M:%S]', now)}"
-                + f"[{colorama.Fore.RED}ERROR{colorama.Fore.RESET}]" + i + '\n')
+        self._output(f"{colorama.Fore.RED}ERROR{colorama.Fore.RESET}", str(out))
 
     def input(self, out):
         out = str(out)

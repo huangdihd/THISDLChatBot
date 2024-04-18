@@ -1,3 +1,4 @@
+import _io
 import asyncio
 
 from THISDLChatBot import Plugin
@@ -7,19 +8,21 @@ from THISDLChatBot import Message
 plugin = Plugin('say hello')
 
 
-async def OnLoad():
+async def onload():
     plugin.bot.logger.info('插件加载...')
 
 
-@plugin.OnCommand('hello')
+@plugin.on_command('hello')
 async def hello(bot: Bot, message: Message):
     await asyncio.sleep(10)
-    await bot.SendImage(await message.GetFromUser(), open('logo.jpg', 'rb'))
+    image: _io.BufferedReader
+    image = open('logo.jpg', 'rb')
+    await bot.send_image(await message.get_from_user(), image)
 
 
-@plugin.OnMessage()
+@plugin.on_message()
 async def log(bot: Bot, message: Message):
     bot.logger.info(message)
 
 
-plugin.OnLoad = OnLoad
+plugin.onload = onload

@@ -25,40 +25,40 @@ class Bot:
 
     async def _start(self):
         while True:
-            messages = await self._GetMessages()
+            messages = await self._get_messages()
             for RawMessage in messages:
                 message = Message(RawMessage, self)
-                await self._UpdatePointer(message)
-                if (await message.GetFromUser()).GetUserId() == self.userid:
+                await self._update_pointer(message)
+                if (await message.get_from_user()).get_user_id() == self.userid:
                     continue
-                if message.IsCommand():
-                    self._CommandProcessor(message)
-                if message.GetType() == 'MessageEventFriendRequest' and self.config['auto_accept']:
-                    await self.Accept(True, (await message.GetFromUser()).GetUserId())
-                self._MessageProcessor(message)
+                if message.is_command():
+                    self._command_processor(message)
+                if message.get_type() == 'MessageEventFriendRequest' and self.config['auto_accept']:
+                    await self.accept(True, (await message.get_from_user()).get_user_id())
+                self._message_processor(message)
             await asyncio.sleep(self.config['wait_time'] / 1000)
 
-    def _CommandProcessor(self, message: Message):
+    def _command_processor(self, message: Message):
         for plugin in self.plugins:
             for commandProcessor in plugin.CommandProcessors:
-                if (message.GetData() + ' ').startswith(f'/{commandProcessor.command} '):
+                if (message.get_data() + ' ').startswith(f'/{commandProcessor.command} '):
                     asyncio.create_task(
-                        commandProcessor.Process((message.GetData() + ' ').split(' ')[1:], message, self))
+                        commandProcessor.process((message.get_data() + ' ').split(' ')[1:], message, self))
 
-    def _MessageProcessor(self, message: Message):
+    def _message_processor(self, message: Message):
         for plugin in self.plugins:
             for messageProcessor in plugin.MessageProcessors:
-                asyncio.create_task(messageProcessor.Process(message, self))
+                asyncio.create_task(messageProcessor.process(message, self, ))
 
-    async def _UpdatePointer(self, message: Message):
-        if message.GetRoomType() == 'Private':
+    async def _update_pointer(self, message: Message):
+        if message.get_room_type() == 'Private':
             await self._httpclient.post(
                 url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
                 json={
                     "action": "im.cts.updatePointer",
                     "body": {
                         "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
-                        "u2Pointer": message.GetPointer(),
+                        "u2Pointer": message.get_pointer(),
                         "groupsPointer": {}
                     },
                     "header": {
@@ -79,7 +79,7 @@ class Bot:
                         "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
                         "u2Pointer": 0,
                         "groupsPointer": {
-                            (await message.GetFromGroup()).GetGroupId(): message.GetPointer()
+                            (await message.get_from_group()).get_group_id(): message.get_pointer()
                         }
                     },
                     "header": {
@@ -93,7 +93,7 @@ class Bot:
                 })
         self.packageId += 1
 
-    async def _GetMessages(self):
+    async def _get_messages(self):
         response = await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format"
                                                    "=json&lang=1",
                                                json={
@@ -121,26 +121,26 @@ class Bot:
             if self.config['auto_login']:
                 self.logger.error('重新登录...')
                 await self._login()
-                return await self._GetMessages()
+                return await self._get_messages()
             else:
                 pass
 
-    async def _UpLoadFile(self, File: _io.BufferedReader, FileType: int, FileName: str) -> str:
-        Data = {
-            'fileType': FileType,
+    async def _up_load_file(self, file: _io.BufferedReader, file_type: int, file_name: str) -> str:
+        data = {
+            'fileType': file_type,
             'isMessageAttachment': 'true'
         }
         file = {
-            'file': (FileName, File, 'application/octet-stream')
+            'file': (file_name, file, 'application/octet-stream')
         }
         response = await self._httpclient.post('http://chat.thisit.cc/index.php?action=http.file.uploadWeb', files=file,
-                                               data=Data, cookies={'zaly_site_user': self.token})
+                                               data=data, cookies=dict(zaly_site_user=self.token))
         if response.json()['errorInfo'] != '':
             raise UpLoadFileFailedException(response.json()['errorInfo'])
         return response.json()['fileId']
 
-    async def _GetPreSessionId(self) -> str:
-        LoginData = {
+    async def _get_pre_session_id(self) -> str:
+        login_data = {
             "action": "api.passport.passwordLogin",
             "body": {
                 "@type": "type.googleapis.com/site.ApiPassportPasswordLoginRequest",
@@ -157,21 +157,21 @@ class Bot:
         }
         response = await self._httpclient.post(
             "http://chat.thisit.cc/index.php?action=api.passport.passwordLogin&body_format=json&lang=1",
-            json=LoginData)
+            json=login_data)
         try:
-            preSessionId = response.json()['body']['preSessionId']
+            pre_session_id = response.json()['body']['preSessionId']
         except KeyError:
             raise LoginFailedException(response.json())
-        return preSessionId
+        return pre_session_id
 
     async def _login(self):
         self._httpclient = httpx.AsyncClient()
-        preSessionId = await self._GetPreSessionId()
-        LoginData = {
+        pre_session_id = await self._get_pre_session_id()
+        login_data = {
             "action": "api.site.login",
             "body": {
                 "@type": "type.googleapis.com/site.ApiSiteLoginRequest",
-                "preSessionId": preSessionId,
+                "preSessionId": pre_session_id,
                 "loginName": self.config['username'],
                 "isRegister": False,
                 "thirdPartyKey": ""
@@ -186,18 +186,18 @@ class Bot:
         }
         response = await self._httpclient.post(
             "http://chat.thisit.cc/index.php?action=page.passport.login&action=api.site.login&body_format=json",
-            json=LoginData)
+            json=login_data)
         try:
             self.userid = response.json()['body']['profile']['public']['userId']
             self.token = response.cookies['zaly_site_user']
         except KeyError:
             raise LoginFailedException(response.json())
 
-    async def DownLoadFile(self, Url: str) -> bytes:
+    async def download_file(self, url: str) -> bytes:
         cookies = {'zaly_site_user': self.token}
-        return (await self._httpclient.get(Url, cookies=cookies)).content
+        return (await self._httpclient.get(url, cookies=cookies)).content
 
-    async def GetFriends(self):
+    async def get_friends(self):
         response = await self._httpclient.post(
             'http://chat.thisit.cc/index.php?action=api.friend.list&body_format=json&lang=1', json={
                 "action": "api.friend.list",
@@ -220,12 +220,12 @@ class Bot:
         try:
             for friend in response.json()['body']['friends']:
                 if friend['profile']['userId'] != self.userid:
-                    friends.append(self.GetFriendProfile(friend['profile']['userId']))
+                    friends.append(self.get_friend_profile(friend['profile']['userId']))
         except KeyError:
             return []
         return friends
 
-    async def GetGroups(self):
+    async def get_groups(self):
         response = await self._httpclient.post(
             'http://chat.thisit.cc/index.php?action=api.group.list&body_format=json&lang=1', json={
                 "action": "api.group.list",
@@ -246,13 +246,13 @@ class Bot:
         self.packageId += 1
         groups = []
         for group in response.json()['body']['list']:
-            groups.append(await self.GetGroupProfile(group))
+            groups.append(await self.get_group_profile(group))
         try:
             return groups
         except KeyError:
             return []
 
-    async def GetFriendProfile(self, user_id) -> Friend:
+    async def get_friend_profile(self, user_id) -> Friend:
         response = await self._httpclient.post(
             url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
             json={
@@ -273,7 +273,7 @@ class Bot:
         self.packageId += 1
         return Friend(response.json()['body']['profile']['profile'])
 
-    async def GetGroupProfile(self, group_id) -> Group:
+    async def get_group_profile(self, group_id) -> Group:
         response = await self._httpclient.post(
             url='http://chat.thisit.cc/index.php?action=api.group.profile&body_format=json&lang=1',
             json={
@@ -294,21 +294,21 @@ class Bot:
         self.packageId += 1
         return Group(response.json()['body']['profile'])
 
-    async def GetUserid(self) -> str:
+    async def get_userid(self) -> str:
         return self.userid
 
-    async def SendText(self, to: Friend, text: str) -> str:
+    async def send_text(self, to: Friend, text: str) -> str:
         if text is None or text == '':
             raise ValueError("The text parameter must have a value!")
         msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
-        MessageData = {
+        message_data = {
             "action": "im.cts.message",
             "body": {
                 "@type": "type.googleapis.com/site.ImCtsMessageRequest",
                 "message": {
                     "fromUserId": self.userid,
                     "roomType": "MessageRoomU2",
-                    "toUserId": to.GetUserId(),
+                    "toUserId": to.get_user_id(),
                     "msgId": msg_id,
                     "timeServer": round(time.time(), 3) * 1000,
                     "text": {
@@ -327,22 +327,22 @@ class Bot:
             "packageId": self.packageId
         }
         await self._httpclient.post('http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
-                                    json=MessageData)
+                                    json=message_data)
         self.packageId += 1
         return msg_id
 
-    async def SendTextToGroup(self, to: Group, text: str) -> str:
+    async def send_text_to_group(self, to: Group, text: str) -> str:
         if text is None or text == '':
             raise ValueError("The text parameter must have a value!")
         msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
-        MessageData = {
+        message_data = {
             "action": "im.cts.message",
             "body": {
                 "@type": "type.googleapis.com/site.ImCtsMessageRequest",
                 "message": {
                     "fromUserId": self.userid,
                     "roomType": "MessageRoomGroup",
-                    "toGroupId": to.GetGroupId(),
+                    "toGroupId": to.get_group_id(),
                     "msgId": msg_id,
                     "timeServer": round(time.time(), 3) * 1000,
                     "text": {
@@ -361,14 +361,14 @@ class Bot:
             "packageId": self.packageId
         }
         await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
-                                    json=MessageData)
+                                    json=message_data)
         self.packageId += 1
         return msg_id
 
-    async def SendFile(self, to: Friend, file: _io.BufferedReader, filename: str = None) -> str:
+    async def send_file(self, to: Friend, file: _io.BufferedReader, filename: str = None) -> str:
         if filename is None:
             filename = file.name
-        fileId = await self._UpLoadFile(file, 3, filename)
+        file_id = await self._up_load_file(file, 3, filename)
         file.seek(0, 2)
         msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
         await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
@@ -379,11 +379,11 @@ class Bot:
                                             "message": {
                                                 "fromUserId": self.userid,
                                                 "roomType": "MessageRoomU2",
-                                                "toUserId": to.GetUserId(),
+                                                "toUserId": to.get_user_id(),
                                                 "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
                                                 "timeServer": round(time.time(), 3) * 1000,
                                                 "document": {
-                                                    "url": fileId,
+                                                    "url": file_id,
                                                     "size": file.tell(),
                                                     "name": filename
                                                 },
@@ -402,10 +402,10 @@ class Bot:
         self.packageId += 1
         return msg_id
 
-    async def SendFileToGroup(self, to: Group, file: _io.BufferedReader, filename: str = None) -> str:
+    async def send_file_to_group(self, to: Group, file: _io.BufferedReader, filename: str = None) -> str:
         if filename is None:
             filename = file.name
-        fileId = await self._UpLoadFile(file, 3, filename)
+        file_id = await self._up_load_file(file, 3, filename)
         file.seek(0, 2)
         msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
         await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
@@ -416,11 +416,11 @@ class Bot:
                                             "message": {
                                                 "fromUserId": self.userid,
                                                 "roomType": "MessageRoomGroup",
-                                                "toGroupId": to.GetGroupId(),
+                                                "toGroupId": to.get_group_id(),
                                                 "msgId": msg_id,
                                                 "timeServer": round(time.time(), 3) * 1000,
                                                 "document": {
-                                                    "url": fileId,
+                                                    "url": file_id,
                                                     "size": file.tell(),
                                                     "name": file.name
                                                 },
@@ -439,10 +439,10 @@ class Bot:
         self.packageId += 1
         return msg_id
 
-    async def SendImage(self, to: Friend, file: _io.BufferedReader, filename: str = None) -> str:
+    async def send_image(self, to: Friend, file: _io.BufferedReader, filename: str = None) -> str:
         if filename is None:
             filename = file.name
-        fileId = await self._UpLoadFile(file, 1, filename)
+        file_id = await self._up_load_file(file, 1, filename)
         file.seek(0, 2)
         msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
         await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
@@ -453,11 +453,11 @@ class Bot:
                                             "message": {
                                                 "fromUserId": self.userid,
                                                 "roomType": "MessageRoomU2",
-                                                "toUserId": to.GetUserId(),
+                                                "toUserId": to.get_user_id(),
                                                 "msgId": msg_id,
                                                 "timeServer": round(time.time(), 3) * 1000,
                                                 "image": {
-                                                    "url": fileId,
+                                                    "url": file_id,
                                                     "width": Image.open(file).size[0],
                                                     "height": Image.open(file).size[1]
                                                 },
@@ -476,10 +476,10 @@ class Bot:
         self.packageId += 1
         return msg_id
 
-    async def SendImageToGroup(self, to: Group, file: _io.BufferedReader, filename: str = None) -> str:
+    async def send_image_to_group(self, to: Group, file: _io.BufferedReader, filename: str = None) -> str:
         if filename is None:
             filename = file.name
-        fileId = await self._UpLoadFile(file, 3, filename)
+        file_id = await self._up_load_file(file, 3, filename)
         file.seek(0, 2)
         msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
         await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
@@ -490,11 +490,11 @@ class Bot:
                                             "message": {
                                                 "fromUserId": self.userid,
                                                 "roomType": "MessageRoomGroup",
-                                                "toGroupId": to.GetGroupId(),
+                                                "toGroupId": to.get_group_id(),
                                                 "msgId": msg_id,
                                                 "timeServer": round(time.time(), 3) * 1000,
                                                 "image": {
-                                                    "url": fileId,
+                                                    "url": file_id,
                                                     "width": Image.open(file).size[0],
                                                     "height": Image.open(file).size[1]
                                                 },
@@ -513,15 +513,15 @@ class Bot:
         self.packageId += 1
         return msg_id
 
-    async def ApplyFriend(self, UserId: str, greeting: str):
+    async def apply_friend(self, user_id: str, greeting: str):
         await self._httpclient.post(url='http://chat.thisit.cc/index.php?action=miniProgram.square.apply', json={
-            "friendId": UserId,
+            "friendId": user_id,
             "greeting": greeting
         }, cookies={
             'zaly_site_user': self.token
         })
 
-    async def RecallMessage(self, MessageId: str, user: Friend):
+    async def recall_message(self, message_id: str, user: Friend):
         await self._httpclient.post(url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
                                     json={
                                         "action": "im.cts.message",
@@ -530,11 +530,11 @@ class Bot:
                                             "message": {
                                                 "fromUserId": self.userid,
                                                 "roomType": "MessageRoomU2",
-                                                "toUserId": user.GetUserId(),
+                                                "toUserId": user.get_user_id(),
                                                 "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
                                                 "timeServer": round(time.time(), 3) * 1000,
                                                 "recall": {
-                                                    "msgId": MessageId,
+                                                    "msgId": message_id,
                                                     "msgText": "此消息被撤回"
                                                 },
                                                 "type": "MessageRecall"
@@ -552,7 +552,7 @@ class Bot:
                                     })
         self.packageId += 1
 
-    async def RecallMessageFromGroup(self, MessageId: str, group: Group):
+    async def recall_message_from_group(self, message_id: str, group: Group):
         await self._httpclient.post(url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
                                     json={
                                         "action": "im.cts.message",
@@ -561,11 +561,11 @@ class Bot:
                                             "message": {
                                                 "fromUserId": self.userid,
                                                 "roomType": "MessageRoomGroup",
-                                                "toGroupId": group.GetGroupId(),
+                                                "toGroupId": group.get_group_id(),
                                                 "msgId": f"GROUP-{math.floor(round(time.time(), 3) * 1000)}",
                                                 "timeServer": round(time.time(), 3) * 1000,
                                                 "recall": {
-                                                    "msgId": MessageId,
+                                                    "msgId": message_id,
                                                     "msgText": "此消息被撤回"
                                                 },
                                                 "type": "MessageRecall"
@@ -581,15 +581,15 @@ class Bot:
                                         "packageId": self.packageId
                                     })
 
-    async def Accept(self, Agree: bool, UserId: str):
+    async def accept(self, agree: bool, user_id: str):
         response = await self._httpclient.post(
             url="http://chat.thisit.cc/index.php?action=api.friend.accept&body_format=json&lang=1",
             json={
                 "action": "api.friend.accept",
                 "body": {
                     "@type": "type.googleapis.com/site.ApiFriendAcceptRequest",
-                    "applyUserId": UserId,
-                    "agree": Agree
+                    "applyUserId": user_id,
+                    "agree": agree
                 },
                 "header": {
                     "_3": self.token,
@@ -609,7 +609,7 @@ class Bot:
         self.logger.success('登录成功!')
         self.loop.run_until_complete(self._start())
 
-    def LoadPlugin(self, plugin: Plugin):
+    def load_plugin(self, plugin: Plugin):
         plugin.bot = self
         self.plugins.append(plugin)
-        self.loop.run_until_complete(plugin.OnLoad())
+        self.loop.run_until_complete(plugin.onload())

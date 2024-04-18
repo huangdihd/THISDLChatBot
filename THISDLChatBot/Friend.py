@@ -6,16 +6,16 @@ class Friend:
     def __str__(self):
         return str(self.profile)
 
-    def GetUserId(self) -> str:
+    def get_user_id(self) -> str:
         return self.profile['userId']
 
-    def GetLoginName(self) -> str:
+    def get_login_name(self) -> str:
         return self.profile['loginName']
 
-    def GetNickName(self) -> str:
+    def get_nick_name(self) -> str:
         return self.profile['nickName']
 
-    def GetAvatarUrl(self) -> str:
+    def get_avatar_url(self) -> str:
         return ('http://chat.thisit.cc/index.php?action=http.file.downloadFile&fileId='
                 + self.profile["avatar"]
                 + '&returnBase64=0&lang=1')

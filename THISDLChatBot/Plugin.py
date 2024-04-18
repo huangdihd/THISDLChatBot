@@ -9,27 +9,27 @@ class Plugin:
         self.MessageProcessors = []
         self.bot = None
 
-    async def OnLoad(self):
+    async def onload(self):
         pass
 
-    def OnCommand(self, command: str):
-        def commandProcessor(func):
+    def on_command(self, command: str):
+        def command_processor(func):
             def wrapper():
                 self.CommandProcessors.append(CommandProcessor(command, func))
 
             return wrapper()
 
-        return commandProcessor
+        return command_processor
 
-    def OnMessage(self):
-        def messageProcessor(func):
+    def on_message(self):
+        def message_processor(func):
             def wrapper():
                 self.MessageProcessors.append(MessageProcessor(func))
 
             return wrapper()
 
-        return messageProcessor
+        return message_processor
 
 
-def LoadPlugin(plugin: str) -> Plugin:
+def load_plugin(plugin: str) -> Plugin:
     return __import__(plugin).plugin

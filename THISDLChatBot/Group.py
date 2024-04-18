@@ -9,27 +9,27 @@ class Group:
     def __str__(self):
         return str(self.profile)
 
-    def GetDescription(self) -> dict:
+    def get_description(self) -> dict:
         return self.profile['description']
 
-    def CanAddFriend(self) -> bool:
+    def can_add_friend(self) -> bool:
         return self.profile['canAddFriend']
 
-    def GetPermissionJoin(self) -> str:
+    def get_permission_join(self) -> str:
         return self.profile['permissionJoin']
 
-    def GetCreateTime(self) -> int:
+    def get_create_time(self) -> int:
         return self.profile['timeCreate']
 
-    def GetOwner(self) -> Friend:
+    def get_owner(self) -> Friend:
         return Friend(self.profile['owner'])
 
-    def GetGroupId(self) -> str:
+    def get_group_id(self) -> str:
         return self.profile['id']
 
-    def GetName(self) -> str:
+    def get_name(self) -> str:
         return self.profile['name']
 
-    def GetAvatarUrl(self) -> str:
+    def get_avatar_url(self) -> str:
         return f'http://chat.thisit.cc/index.php?action=http.file.downloadFile&fileId={self.profile["avatar"]}\
         &returnBase64=0&lang=1'
