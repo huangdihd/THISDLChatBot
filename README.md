@@ -8,7 +8,7 @@
 ### 2.用pip安装THISDLChatBot
 #### 在你的电脑/服务器的终端上运行 `pip install THISDLChatBot`
 ### 3.创建入口文件
-#### 可以下载仓库中的bot.py进行修改(将 `bot.LoadPlugin(LoadPlugin('testplugin'))` 改成加载自己的插件), 也可以自己写
+#### 可以下载仓库中的bot.py进行修改(将 `bot.load_plugin(load_plugin('testplugin'))` 改成加载自己的插件), 也可以自己写
 ### 4.运行
 #### 直接~~原神~~启动入口文件就可以了 `python3 bot.py`
 ### 5.创建配置文件
