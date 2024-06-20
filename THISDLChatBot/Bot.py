@@ -216,11 +216,8 @@ class Bot:
                 "packageId": self.packageId
             })
         self.packageId += 1
-        friends = []
         try:
-            for friend in response.json()['body']['friends']:
-                if friend['profile']['userId'] != self.userid:
-                    friends.append(self.get_friend_profile(friend['profile']['userId']))
+            friends = [friend['profile']['userId'] for friend in response.json()['body']['friends'] if friend['profile']['userId'] != self.userid]
         except KeyError:
             return []
         return friends
@@ -244,9 +241,7 @@ class Bot:
                 "packageId": self.packageId
             })
         self.packageId += 1
-        groups = []
-        for group in response.json()['body']['list']:
-            groups.append(await self.get_group_profile(group))
+        groups = [await self.get_group_profile(group) for group in response.json()['body']['list']]
         try:
             return groups
         except KeyError:

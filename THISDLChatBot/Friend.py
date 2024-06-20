@@ -13,7 +13,7 @@ class Friend:
         return self.profile['loginName']
 
     def get_nick_name(self) -> str:
-        return self.profile['nickName']
+        return self.profile['nickname']
 
     def get_avatar_url(self) -> str:
         return ('http://chat.thisit.cc/index.php?action=http.file.downloadFile&fileId='

@@ -8,4 +8,3 @@ if config.config == {}:
 bot = THISDLChatBot.Bot(config, logger)
 bot.load_plugin(load_plugin('testplugin'))
 bot.start()
-
