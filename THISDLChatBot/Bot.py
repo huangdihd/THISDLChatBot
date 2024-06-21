@@ -43,7 +43,7 @@ class Bot:
             for commandProcessor in plugin.CommandProcessors:
                 if (message.get_data() + ' ').startswith(f'/{commandProcessor.command} '):
                     asyncio.create_task(
-                        commandProcessor.process((message.get_data() + ' ').split(' ')[1:], message, self))
+                        commandProcessor.process((message.get_data() + ' ').split(' ')[1:-1], message, self))
 
     def _message_processor(self, message: Message):
         for plugin in self.plugins:
@@ -217,7 +217,8 @@ class Bot:
             })
         self.packageId += 1
         try:
-            friends = [friend['profile']['userId'] for friend in response.json()['body']['friends'] if friend['profile']['userId'] != self.userid]
+            friends = [friend['profile']['userId']
+                       for friend in response.json()['body']['friends'] if friend['profile']['userId'] != self.userid]
         except KeyError:
             return []
         return friends
