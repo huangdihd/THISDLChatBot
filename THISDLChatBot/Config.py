@@ -4,19 +4,24 @@ import json
 
 
 class Config:
+    """配置文件类"""
 
     def __init__(self, filepath: str = 'config.json') -> None:
+        """通过文件路径创建配置文件对象,默认路径为"config.json\""""
         self.config = None
         self.filepath = filepath
         self.reload()
 
     def __getitem__(self, item):
+        """获取配置文件中的值的方法"""
         return self.config.get(item)
 
     def save(self):
+        """保存配置文件的方法"""
         json.dump(self.config, open(self.filepath, 'w', encoding='utf-8'), indent=4)
 
     def create_guide(self, logger: Logger):
+        """创建配置文件的向导方法"""
         logger.warn("缺少配置文件或配置文件缺少值,启动配置文件创建程序!")
         if not os.path.exists(self.filepath) or "username" not in json.load(open(self.filepath)):
             username = logger.input("输入用户名:")
@@ -90,6 +95,7 @@ class Config:
         self.save()
 
     def reload(self):
+        """从文件重载配置文件的方法"""
         keys = ['username', 'password', 'wait_time', 'auto_login', 'auto_accept']
         if os.path.exists("config.json") and list(json.load(open(self.filepath)).keys()).sort() == keys.sort():
             self.config = json.load(open("config.json", encoding='utf-8'))

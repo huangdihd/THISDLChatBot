@@ -1,4 +1,5 @@
 import _io
+from typing import Any, Coroutine
 
 import httpx
 import time
@@ -15,15 +16,18 @@ from .Plugin import Plugin
 
 
 class Bot:
+    """机器人类"""
 
     def __init__(self, config: Config, logger: Logger) -> None:
+        """创建一个机器人对象"""
         self.logger = logger
         self.config = config
         self.loop = asyncio.get_event_loop()
         self.packageId = 1
-        self.plugins = []
+        self._plugins = []
 
     async def _start(self):
+        """用于启动机器人的内部异步方法"""
         while True:
             messages = await self._get_messages()
             for RawMessage in messages:
@@ -39,18 +43,21 @@ class Bot:
             await asyncio.sleep(self.config['wait_time'] / 1000)
 
     def _command_processor(self, message: Message):
-        for plugin in self.plugins:
+        """用于处理命令的内部方法"""
+        for plugin in self._plugins:
             for commandProcessor in plugin.CommandProcessors:
                 if (message.get_data() + ' ').startswith(f'/{commandProcessor.command} '):
                     asyncio.create_task(
                         commandProcessor.process((message.get_data() + ' ').split(' ')[1:-1], message, self))
 
     def _message_processor(self, message: Message):
-        for plugin in self.plugins:
+        """用于处理命令的内部方法"""
+        for plugin in self._plugins:
             for messageProcessor in plugin.MessageProcessors:
                 asyncio.create_task(messageProcessor.process(message, self, ))
 
     async def _update_pointer(self, message: Message):
+        """用于更新pointer的内部方法"""
         if message.get_room_type() == 'Private':
             await self._httpclient.post(
                 url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
@@ -94,6 +101,7 @@ class Bot:
         self.packageId += 1
 
     async def _get_messages(self):
+        """用于获取消息的内部方法"""
         response = await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format"
                                                    "=json&lang=1",
                                                json={
@@ -126,6 +134,7 @@ class Bot:
                 pass
 
     async def _up_load_file(self, file: _io.BufferedReader, file_type: int, file_name: str) -> str:
+        """用于上传文件的内部方法"""
         data = {
             'fileType': file_type,
             'isMessageAttachment': 'true'
@@ -140,6 +149,7 @@ class Bot:
         return response.json()['fileId']
 
     async def _get_pre_session_id(self) -> str:
+        """获取pre_session_id的内部方法"""
         login_data = {
             "action": "api.passport.passwordLogin",
             "body": {
@@ -165,6 +175,7 @@ class Bot:
         return pre_session_id
 
     async def _login(self):
+        """用于登录的内部方法"""
         self._httpclient = httpx.AsyncClient()
         pre_session_id = await self._get_pre_session_id()
         login_data = {
@@ -194,10 +205,12 @@ class Bot:
             raise LoginFailedException(response.json())
 
     async def download_file(self, url: str) -> bytes:
+        """用于使用机器人账户信息下载带鉴权文件的方法"""
         cookies = {'zaly_site_user': self.token}
         return (await self._httpclient.get(url, cookies=cookies)).content
 
-    async def get_friends(self):
+    async def get_friends(self) -> list[Any] | list[Coroutine[Any, Any, Friend]]:
+        """获取机器人好友列表的方法"""
         response = await self._httpclient.post(
             'http://chat.thisit.cc/index.php?action=api.friend.list&body_format=json&lang=1', json={
                 "action": "api.friend.list",
@@ -217,13 +230,14 @@ class Bot:
             })
         self.packageId += 1
         try:
-            friends = [friend['profile']['userId']
+            friends = [self.get_friend_profile(friend['profile']['userId'])
                        for friend in response.json()['body']['friends'] if friend['profile']['userId'] != self.userid]
         except KeyError:
             return []
         return friends
 
     async def get_groups(self):
+        """获取机器人所有所在群列表的方法"""
         response = await self._httpclient.post(
             'http://chat.thisit.cc/index.php?action=api.group.list&body_format=json&lang=1', json={
                 "action": "api.group.list",
@@ -249,6 +263,7 @@ class Bot:
             return []
 
     async def get_friend_profile(self, user_id) -> Friend:
+        """通过好友user_id获取好友详细信息的方法"""
         response = await self._httpclient.post(
             url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
             json={
@@ -270,6 +285,7 @@ class Bot:
         return Friend(response.json()['body']['profile']['profile'])
 
     async def get_group_profile(self, group_id) -> Group:
+        """通过群group_id获取群详细信息的方法"""
         response = await self._httpclient.post(
             url='http://chat.thisit.cc/index.php?action=api.group.profile&body_format=json&lang=1',
             json={
@@ -291,9 +307,11 @@ class Bot:
         return Group(response.json()['body']['profile'])
 
     async def get_userid(self) -> str:
+        """获取机器人user_id的防范"""
         return self.userid
 
     async def send_text(self, to: Friend, text: str) -> str:
+        """发送文本消息到好友的方法"""
         if text is None or text == '':
             raise ValueError("The text parameter must have a value!")
         msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
@@ -328,6 +346,7 @@ class Bot:
         return msg_id
 
     async def send_text_to_group(self, to: Group, text: str) -> str:
+        """发送文本消息到群的方法"""
         if text is None or text == '':
             raise ValueError("The text parameter must have a value!")
         msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
@@ -362,6 +381,7 @@ class Bot:
         return msg_id
 
     async def send_file(self, to: Friend, file: _io.BufferedReader, filename: str = None) -> str:
+        """发送文件到好友的方法"""
         if filename is None:
             filename = file.name
         file_id = await self._up_load_file(file, 3, filename)
@@ -399,6 +419,7 @@ class Bot:
         return msg_id
 
     async def send_file_to_group(self, to: Group, file: _io.BufferedReader, filename: str = None) -> str:
+        """发送文件到群的方法"""
         if filename is None:
             filename = file.name
         file_id = await self._up_load_file(file, 3, filename)
@@ -436,6 +457,7 @@ class Bot:
         return msg_id
 
     async def send_image(self, to: Friend, file: _io.BufferedReader, filename: str = None) -> str:
+        """发送图片到好友的方法"""
         if filename is None:
             filename = file.name
         file_id = await self._up_load_file(file, 1, filename)
@@ -473,6 +495,7 @@ class Bot:
         return msg_id
 
     async def send_image_to_group(self, to: Group, file: _io.BufferedReader, filename: str = None) -> str:
+        """发送文件到群的方法"""
         if filename is None:
             filename = file.name
         file_id = await self._up_load_file(file, 3, filename)
@@ -510,6 +533,7 @@ class Bot:
         return msg_id
 
     async def apply_friend(self, user_id: str, greeting: str):
+        """发送好友申请的方法"""
         await self._httpclient.post(url='http://chat.thisit.cc/index.php?action=miniProgram.square.apply', json={
             "friendId": user_id,
             "greeting": greeting
@@ -518,6 +542,7 @@ class Bot:
         })
 
     async def recall_message(self, message_id: str, user: Friend):
+        """撤回发送到好友的消息的方法"""
         await self._httpclient.post(url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
                                     json={
                                         "action": "im.cts.message",
@@ -549,6 +574,7 @@ class Bot:
         self.packageId += 1
 
     async def recall_message_from_group(self, message_id: str, group: Group):
+        """撤回发送到群的消息的方法"""
         await self._httpclient.post(url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
                                     json={
                                         "action": "im.cts.message",
@@ -578,6 +604,7 @@ class Bot:
                                     })
 
     async def accept(self, agree: bool, user_id: str):
+        """设置是否通过好友申请的方法"""
         response = await self._httpclient.post(
             url="http://chat.thisit.cc/index.php?action=api.friend.accept&body_format=json&lang=1",
             json={
@@ -600,12 +627,28 @@ class Bot:
         return response.json()['header']['_1'] == 'success'
 
     def start(self):
+        """启动机器人的方法"""
         self.logger.info('机器人启动...')
         self.loop.run_until_complete(self._login())
         self.logger.success('登录成功!')
         self.loop.run_until_complete(self._start())
 
+    def get_plugins(self) -> list[str]:
+        """获取机器人插件列表的方法"""
+        return [plugin.name for plugin in self._plugins]
+
+    def has_plugins(self, plugin_name: str) -> bool:
+        """查看机器人是否有名为某字符串的插件的方法"""
+        return any([plugin.name == plugin_name for plugin in self._plugins])
+
+    def get_plugin(self, plugin_name: str) -> list[Plugin] | None:
+        """获取所有名为某字符串的插件的方法"""
+        if not self.has_plugins(plugin_name):
+            return None
+        return [plugin for plugin in self._plugins if plugin.name == plugin_name]
+
     def load_plugin(self, plugin: Plugin):
+        """加载插件的方法"""
         plugin.bot = self
-        self.plugins.append(plugin)
+        self._plugins.append(plugin)
         self.loop.run_until_complete(plugin.onload())
