@@ -32,4 +32,9 @@ class Plugin:
 
 
 def load_plugin(plugin: str) -> Plugin:
-    return __import__(plugin).plugin
+    pl = __import__(plugin)
+    if '.' not in plugin:
+        return pl.plugin
+    for package in plugin.split('.')[1:]:
+        pl = getattr(pl, package)
+    return pl.plugin
