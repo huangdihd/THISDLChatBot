@@ -32,3 +32,6 @@ async def log(bot: Bot, message: Message):
 
 ## 进阶
 #### 如果您想更加深入的了解如bot的方法等内容,可以去翻包中各个类的源码,在这里就不一个个解释了
+
+## 还是不懂?
+#### 可以查看[testplugin](https://github.com/huangdihd/THISDLChatBot/blob/main/testplugin.py)或者联系作者邮箱`hd20100104@163.com`寻求帮助

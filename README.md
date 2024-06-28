@@ -14,7 +14,7 @@
 ### 5.创建配置文件
 #### 首次运行程序是没有配置文件的(~~废话~~),入口文件应该会引导创建配置文件
 ### 6.自己写或者找网上写好的插件
-#### 想自己写的话可以看看[插件开发指南](https://github.com/huangdihd/THISDLChatBot/blob/main/PDG.md)(以后写,2.x与1.x因为加载方式不同所以不通用)
+#### 想自己写的话可以看看[插件开发指南](https://github.com/huangdihd/THISDLChatBot/blob/main/PDG.md)
 ## 遇到问题
 ### 去Issues提干嘛?愣着啊!
 ## 建议和意见
