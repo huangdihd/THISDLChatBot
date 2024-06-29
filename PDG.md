@@ -6,10 +6,33 @@
 ### 3. 绑定命令和消息处理器
 
 ## 1.创建插件对象
-#### 使用`Plugin.py`中的`load_plugin`方法加载的插件会默认获取一个名为`plugin`的插件对象,可以通过`plugin = Plugin([插件名称])`来进行创建
+#### 使用`Plugin.py`中的`load_plugin`方法加载的插件会默认获取一个名为`plugin`的插件对象,可以通过`plugin = Plugin([插件名称])`来进行创建:
+```python
+# 创建一个名为say hello的插件对象,变量明只能是plugin,否则load_plugin无法获得插件对象
+plugin = Plugin('say hello')
+```
 
 ## 2.设置on_load方法
 #### 机器人加载插件时会调用插件的on_load方法,默认只有pass,可以直接自己写一个函数然后赋值也可以继承后重写
+#### 赋值设置的方法:
+```python
+async def onload():
+    plugin.bot.logger.info('插件加载...')
+    
+    
+# 直接赋值简单粗暴
+plugin.onload = onload
+```
+#### 继承重写设置的方法:
+```python
+# 这个方法看起来优雅一些
+class TestPlugin(Plugin):
+    async def onload(self):
+        self.bot.logger.info('插件加载...')
+        
+        
+plugin = TestPlugin('say hello')
+```
 
 ## 3.绑定命令和消息处理器
 #### 当创建好插件对象后,可以使用插件对象的`on_command`和`on_message`装饰器绑定,如:
