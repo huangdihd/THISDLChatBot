@@ -1,6 +1,7 @@
 import _io
 from typing import Any, Coroutine
 
+import httpcore
 import httpx
 import time
 import math
@@ -75,7 +76,16 @@ class Bot:
     async def _http_post(self, url: str, action: str, body: dict):
         """用于发出post请求的内部方法"""
         self.packageId += 1
-        return await self._httpclient.post(url=url, json=self._get_requests_json(action, body))
+        while True:
+            try:
+                return await self._httpclient.post(url=url, json=self._get_requests_json(action, body))
+            except httpx.ReadTimeout:
+                self.logger.error('请求超时,请检查网络...')
+            except httpcore.ConnectError as exc:
+                self.logger.error(f'连接失败,请检查网络:{exc}')
+            except httpx.ConnectError as exc:
+                self.logger.error(f'连接失败,请检查网络:{exc}')
+            await asyncio.sleep(2)
 
     async def _update_pointer(self, message: Message):
         """用于更新pointer的内部方法"""
@@ -87,7 +97,8 @@ class Bot:
                     "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
                     "u2Pointer": message.get_pointer(),
                     "groupsPointer": {}
-                })
+                }
+            )
         else:
             await self._http_post(
                 url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
@@ -98,18 +109,20 @@ class Bot:
                     "groupsPointer": {
                         (await message.get_from_group()).get_group_id(): message.get_pointer()
                     }
-                })
+                }
+            )
 
     async def _get_messages(self):
         """用于获取消息列表的内部方法"""
-        response = await self._http_post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format"
-                                             "=json&lang=1",
-                                         action="im.cts.sync",
-                                         body={
-                                             "@type": "type.googleapis.com/site.ImCtsSyncRequest",
-                                             "u2Count": 200,
-                                             "groupCount": 200
-                                         })
+        response = await self._http_post(
+            url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format=json&lang=1",
+            action="im.cts.sync",
+            body={
+                "@type": "type.googleapis.com/site.ImCtsSyncRequest",
+                "u2Count": 200,
+                "groupCount": 200
+            }
+        )
 
         try:
             return response.json()['body']['list'][:-1]
@@ -131,8 +144,12 @@ class Bot:
         file = {
             'file': (file_name, file, 'application/octet-stream')
         }
-        response = await self._httpclient.post('http://chat.thisit.cc/index.php?action=http.file.uploadWeb', files=file,
-                                               data=data, cookies=dict(zaly_site_user=self.token))
+        response = await self._httpclient.post(
+            url='http://chat.thisit.cc/index.php?action=http.file.uploadWeb',
+            files=file,
+            data=data,
+            cookies=dict(zaly_site_user=self.token)
+        )
         if response.json()['errorInfo'] != '':
             raise UpLoadFileFailedException(response.json()['errorInfo'])
         return response.json()['fileId']
