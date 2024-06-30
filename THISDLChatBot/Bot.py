@@ -25,6 +25,7 @@ class Bot:
         self.loop = asyncio.get_event_loop()
         self.packageId = 1
         self._plugins = []
+        self.token = ""
 
     async def _start(self):
         """用于启动机器人的内部异步方法"""
@@ -56,72 +57,60 @@ class Bot:
             for messageProcessor in plugin.MessageProcessors:
                 asyncio.create_task(messageProcessor.process(message, self, ))
 
+    def _get_requests_json(self, action: str, body: dict) -> dict:
+        """用于生成带有bot的token信息和package_id的json请求体的内部方法"""
+        return {
+            "action": action,
+            "body": body,
+            "header": {
+                "_3": self.token,
+                "_4": "http://chat.thisit.cc/index.php",
+                "_8": "1",
+                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/115.0.0.0 Safari/537.36"
+            },
+            "packageId": self.packageId
+        }
+
+    async def _http_post(self, url: str, action: str, body: dict):
+        """用于发出post请求的内部方法"""
+        self.packageId += 1
+        return await self._httpclient.post(url=url, json=self._get_requests_json(action, body))
+
     async def _update_pointer(self, message: Message):
         """用于更新pointer的内部方法"""
         if message.get_room_type() == 'Private':
-            await self._httpclient.post(
+            await self._http_post(
                 url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
-                json={
-                    "action": "im.cts.updatePointer",
-                    "body": {
-                        "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
-                        "u2Pointer": message.get_pointer(),
-                        "groupsPointer": {}
-                    },
-                    "header": {
-                        "_3": self.token,
-                        "_4": "http://chat.thisit.cc/index.php",
-                        "_8": "1",
-                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                              "Chrome/115.0.0.0 Safari/537.36"
-                    },
-                    "packageId": self.packageId
+                action="im.cts.updatePointer",
+                body={
+                    "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                    "u2Pointer": message.get_pointer(),
+                    "groupsPointer": {}
                 })
         else:
-            await self._httpclient.post(
+            await self._http_post(
                 url="http://chat.thisit.cc/index.php?action=im.cts.updatePointer&body_format=json&lang=1",
-                json={
-                    "action": "im.cts.updatePointer",
-                    "body": {
-                        "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
-                        "u2Pointer": 0,
-                        "groupsPointer": {
-                            (await message.get_from_group()).get_group_id(): message.get_pointer()
-                        }
-                    },
-                    "header": {
-                        "_3": self.token,
-                        "_4": "http://chat.thisit.cc/index.php",
-                        "_8": "1",
-                        "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                              "Chrome/115.0.0.0 Safari/537.36"
-                    },
-                    "packageId": self.packageId
+                action="im.cts.updatePointer",
+                body={
+                    "@type": "type.googleapis.com/site.ImCtsUpdatePointerRequest",
+                    "u2Pointer": 0,
+                    "groupsPointer": {
+                        (await message.get_from_group()).get_group_id(): message.get_pointer()
+                    }
                 })
-        self.packageId += 1
 
     async def _get_messages(self):
-        """用于获取消息的内部方法"""
-        response = await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format"
-                                                   "=json&lang=1",
-                                               json={
-                                                   "action": "im.cts.sync",
-                                                   "body": {
-                                                       "@type": "type.googleapis.com/site.ImCtsSyncRequest",
-                                                       "u2Count": 200,
-                                                       "groupCount": 200
-                                                   },
-                                                   "header": {
-                                                       "_3": self.token,
-                                                       "_4": "http://chat.thisit.cc/index.php",
-                                                       "_8": "1",
-                                                       "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                                                             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 "
-                                                             "Safari/537.36"
-                                                   },
-                                                   "packageId": self.packageId
-                                               })
-        self.packageId += 1
+        """用于获取消息列表的内部方法"""
+        response = await self._http_post(url="http://chat.thisit.cc/index.php?action=im.cts.sync&body_format"
+                                             "=json&lang=1",
+                                         action="im.cts.sync",
+                                         body={
+                                             "@type": "type.googleapis.com/site.ImCtsSyncRequest",
+                                             "u2Count": 200,
+                                             "groupCount": 200
+                                         })
+
         try:
             return response.json()['body']['list'][:-1]
         except KeyError:
@@ -150,24 +139,14 @@ class Bot:
 
     async def _get_pre_session_id(self) -> str:
         """获取pre_session_id的内部方法"""
-        login_data = {
-            "action": "api.passport.passwordLogin",
-            "body": {
+        response = await self._http_post(
+            "http://chat.thisit.cc/index.php?action=api.passport.passwordLogin&body_format=json&lang=1",
+            action="api.passport.passwordLogin",
+            body={
                 "@type": "type.googleapis.com/site.ApiPassportPasswordLoginRequest",
                 "loginName": self.config['username'],
                 "password": self.config['password']
-            },
-            "header": {
-                "_4": "http://chat.thisit.cc/index.php",
-                "_8": "1",
-                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/115.0.0.0 Safari/537.36"
-            },
-            "packageId": 1
-        }
-        response = await self._httpclient.post(
-            "http://chat.thisit.cc/index.php?action=api.passport.passwordLogin&body_format=json&lang=1",
-            json=login_data)
+            })
         try:
             pre_session_id = response.json()['body']['preSessionId']
         except KeyError:
@@ -178,26 +157,16 @@ class Bot:
         """用于登录的内部方法"""
         self._httpclient = httpx.AsyncClient()
         pre_session_id = await self._get_pre_session_id()
-        login_data = {
-            "action": "api.site.login",
-            "body": {
+        response = await self._http_post(
+            "http://chat.thisit.cc/index.php?action=page.passport.login&action=api.site.login&body_format=json",
+            action="api.site.login",
+            body={
                 "@type": "type.googleapis.com/site.ApiSiteLoginRequest",
                 "preSessionId": pre_session_id,
                 "loginName": self.config['username'],
                 "isRegister": False,
                 "thirdPartyKey": ""
-            },
-            "header": {
-                "_4": "http://chat.thisit.cc/index.php?action=page.passport.login",
-                "_8": "1",
-                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/115.0.0.0 Safari/537.36"
-            },
-            "packageId": 2
-        }
-        response = await self._httpclient.post(
-            "http://chat.thisit.cc/index.php?action=page.passport.login&action=api.site.login&body_format=json",
-            json=login_data)
+            })
         try:
             self.userid = response.json()['body']['profile']['public']['userId']
             self.token = response.cookies['zaly_site_user']
@@ -211,24 +180,15 @@ class Bot:
 
     async def get_friends(self) -> list[Any] | list[Coroutine[Any, Any, Friend]]:
         """获取机器人好友列表的方法"""
-        response = await self._httpclient.post(
-            'http://chat.thisit.cc/index.php?action=api.friend.list&body_format=json&lang=1', json={
-                "action": "api.friend.list",
-                "body": {
-                    "@type": "type.googleapis.com/site.ApiFriendListRequest",
-                    "offset": 0,
-                    "count": 200
-                },
-                "header": {
-                    "_3": self.token,
-                    "_4": "http://chat.thisit.cc/",
-                    "_8": "1",
-                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/115.0.0.0 Safari/537.36"
-                },
-                "packageId": self.packageId
-            })
-        self.packageId += 1
+        response = await self._http_post(
+            'http://chat.thisit.cc/index.php?action=api.friend.list&body_format=json&lang=1',
+            action="api.friend.list",
+            body={
+                "@type": "type.googleapis.com/site.ApiFriendListRequest",
+                "offset": 0,
+                "count": 200
+            }
+        )
         try:
             friends = [self.get_friend_profile(friend['profile']['userId'])
                        for friend in response.json()['body']['friends'] if friend['profile']['userId'] != self.userid]
@@ -238,24 +198,15 @@ class Bot:
 
     async def get_groups(self):
         """获取机器人所有所在群列表的方法"""
-        response = await self._httpclient.post(
-            'http://chat.thisit.cc/index.php?action=api.group.list&body_format=json&lang=1', json={
-                "action": "api.group.list",
-                "body": {
-                    "@type": "type.googleapis.com/site.ApiGroupListRequest",
-                    "offset": 0,
-                    "count": 200
-                },
-                "header": {
-                    "_3": self.token,
-                    "_4": "http://chat.thisit.cc/",
-                    "_8": "1",
-                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/115.0.0.0 Safari/537.36"
-                },
-                "packageId": self.packageId
-            })
-        self.packageId += 1
+        response = await self._http_post(
+            'http://chat.thisit.cc/index.php?action=api.group.list&body_format=json&lang=1',
+            action="api.group.list",
+            body={
+                "@type": "type.googleapis.com/site.ApiGroupListRequest",
+                "offset": 0,
+                "count": 200
+            }
+        )
         groups = [await self.get_group_profile(group) for group in response.json()['body']['list']]
         try:
             return groups
@@ -264,46 +215,28 @@ class Bot:
 
     async def get_friend_profile(self, user_id) -> Friend:
         """通过好友user_id获取好友详细信息的方法"""
-        response = await self._httpclient.post(
+        response = await self._http_post(
             url="http://chat.thisit.cc/index.php?action=api.friend.profile&body_format=json&lang=1",
-            json={
-                "action": "api.friend.profile",
-                "body": {
-                    "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
-                    "userId": user_id
-                },
-                "header": {
-                    "_3": self.token,
-                    "_4": "http://chat.thisit.cc/index.php",
-                    "_8": "1",
-                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-                },
-                "packageId": self.packageId
-            })
-        self.packageId += 1
+            action="api.friend.profile",
+            body={
+                "@type": "type.googleapis.com/site.ApiFriendProfileRequest",
+                "userId": user_id
+            }
+        )
+
         return Friend(response.json()['body']['profile']['profile'])
 
     async def get_group_profile(self, group_id) -> Group:
         """通过群group_id获取群详细信息的方法"""
-        response = await self._httpclient.post(
+        response = await self._http_post(
             url='http://chat.thisit.cc/index.php?action=api.group.profile&body_format=json&lang=1',
-            json={
-                "action": "api.group.profile",
-                "body": {
-                    "@type": "type.googleapis.com/site.ApiGroupProfileRequest",
-                    "groupId": group_id
-                },
-                "header": {
-                    "_3": self.token,
-                    "_4": "http://chat.thisit.cc/index.php",
-                    "_8": "1",
-                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/115.0.0.0 Safari/537.36"
-                },
-                "packageId": self.packageId
-            })
-        self.packageId += 1
+            action="api.group.profile",
+            body={
+                "@type": "type.googleapis.com/site.ApiGroupProfileRequest",
+                "groupId": group_id
+            }
+        )
+
         return Group(response.json()['body']['profile'])
 
     async def get_userid(self) -> str:
@@ -315,9 +248,10 @@ class Bot:
         if text is None or text == '':
             raise ValueError("The text parameter must have a value!")
         msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
-        message_data = {
-            "action": "im.cts.message",
-            "body": {
+        await self._http_post(
+            url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
+            action="im.cts.message",
+            body={
                 "@type": "type.googleapis.com/site.ImCtsMessageRequest",
                 "message": {
                     "fromUserId": self.userid,
@@ -330,19 +264,8 @@ class Bot:
                     },
                     "type": "MessageText"
                 }
-            },
-            "header": {
-                "_3": self.token,
-                "_4": "http://chat.thisit.cc/index.php",
-                "_8": "1",
-                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-            },
-            "packageId": self.packageId
-        }
-        await self._httpclient.post('http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
-                                    json=message_data)
-        self.packageId += 1
+            }
+        )
         return msg_id
 
     async def send_text_to_group(self, to: Group, text: str) -> str:
@@ -350,9 +273,10 @@ class Bot:
         if text is None or text == '':
             raise ValueError("The text parameter must have a value!")
         msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
-        message_data = {
-            "action": "im.cts.message",
-            "body": {
+        await self._http_post(
+            url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
+            action="im.cts.message",
+            body={
                 "@type": "type.googleapis.com/site.ImCtsMessageRequest",
                 "message": {
                     "fromUserId": self.userid,
@@ -365,19 +289,8 @@ class Bot:
                     },
                     "type": "MessageText"
                 }
-            },
-            "header": {
-                "_3": self.token,
-                "_4": "http://chat.thisit.cc/index.php",
-                "_8": "1",
-                "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/115.0.0.0 Safari/537.36"
-            },
-            "packageId": self.packageId
-        }
-        await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
-                                    json=message_data)
-        self.packageId += 1
+            }
+        )
         return msg_id
 
     async def send_file(self, to: Friend, file: _io.BufferedReader, filename: str = None) -> str:
@@ -387,35 +300,26 @@ class Bot:
         file_id = await self._up_load_file(file, 3, filename)
         file.seek(0, 2)
         msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
-        await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
-                                    json={
-                                        "action": "im.cts.message",
-                                        "body": {
-                                            "@type": "type.googleapis.com/site.ImCtsMessageRequest",
-                                            "message": {
-                                                "fromUserId": self.userid,
-                                                "roomType": "MessageRoomU2",
-                                                "toUserId": to.get_user_id(),
-                                                "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
-                                                "timeServer": round(time.time(), 3) * 1000,
-                                                "document": {
-                                                    "url": file_id,
-                                                    "size": file.tell(),
-                                                    "name": filename
-                                                },
-                                                "type": "MessageDocument"
-                                            }
-                                        },
-                                        "header": {
-                                            "_3": self.token,
-                                            "_4": "http://chat.thisit.cc/index.php",
-                                            "_8": "1",
-                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,"
-                                                  "like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-                                        },
-                                        "packageId": self.packageId
-                                    })
-        self.packageId += 1
+        await self._http_post(
+            url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
+            action="im.cts.message",
+            body={
+                "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                "message": {
+                    "fromUserId": self.userid,
+                    "roomType": "MessageRoomU2",
+                    "toUserId": to.get_user_id(),
+                    "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
+                    "timeServer": round(time.time(), 3) * 1000,
+                    "document": {
+                        "url": file_id,
+                        "size": file.tell(),
+                        "name": filename
+                    },
+                    "type": "MessageDocument"
+                }
+            }
+        )
         return msg_id
 
     async def send_file_to_group(self, to: Group, file: _io.BufferedReader, filename: str = None) -> str:
@@ -425,35 +329,26 @@ class Bot:
         file_id = await self._up_load_file(file, 3, filename)
         file.seek(0, 2)
         msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
-        await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
-                                    json={
-                                        "action": "im.cts.message",
-                                        "body": {
-                                            "@type": "type.googleapis.com/site.ImCtsMessageRequest",
-                                            "message": {
-                                                "fromUserId": self.userid,
-                                                "roomType": "MessageRoomGroup",
-                                                "toGroupId": to.get_group_id(),
-                                                "msgId": msg_id,
-                                                "timeServer": round(time.time(), 3) * 1000,
-                                                "document": {
-                                                    "url": file_id,
-                                                    "size": file.tell(),
-                                                    "name": file.name
-                                                },
-                                                "type": "MessageDocument"
-                                            }
-                                        },
-                                        "header": {
-                                            "_3": self.token,
-                                            "_4": "http://chat.thisit.cc/index.php",
-                                            "_8": "1",
-                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ("
-                                                  "KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-                                        },
-                                        "packageId": self.packageId
-                                    })
-        self.packageId += 1
+        await self._http_post(
+            url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
+            action="im.cts.message",
+            body={
+                "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                "message": {
+                    "fromUserId": self.userid,
+                    "roomType": "MessageRoomGroup",
+                    "toGroupId": to.get_group_id(),
+                    "msgId": msg_id,
+                    "timeServer": round(time.time(), 3) * 1000,
+                    "document": {
+                        "url": file_id,
+                        "size": file.tell(),
+                        "name": file.name
+                    },
+                    "type": "MessageDocument"
+                }
+            }
+        )
         return msg_id
 
     async def send_image(self, to: Friend, file: _io.BufferedReader, filename: str = None) -> str:
@@ -463,35 +358,26 @@ class Bot:
         file_id = await self._up_load_file(file, 1, filename)
         file.seek(0, 2)
         msg_id = f"U2-{math.floor(round(time.time(), 3) * 1000)}"
-        await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
-                                    json={
-                                        "action": "im.cts.message",
-                                        "body": {
-                                            "@type": "type.googleapis.com/site.ImCtsMessageRequest",
-                                            "message": {
-                                                "fromUserId": self.userid,
-                                                "roomType": "MessageRoomU2",
-                                                "toUserId": to.get_user_id(),
-                                                "msgId": msg_id,
-                                                "timeServer": round(time.time(), 3) * 1000,
-                                                "image": {
-                                                    "url": file_id,
-                                                    "width": Image.open(file).size[0],
-                                                    "height": Image.open(file).size[1]
-                                                },
-                                                "type": "MessageImage"
-                                            }
-                                        },
-                                        "header": {
-                                            "_3": self.token,
-                                            "_4": "http://chat.thisit.cc/index.php",
-                                            "_8": "1",
-                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ("
-                                                  "KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-                                        },
-                                        "packageId": self.packageId
-                                    })
-        self.packageId += 1
+        await self._http_post(
+            url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
+            action="im.cts.message",
+            body={
+                "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                "message": {
+                    "fromUserId": self.userid,
+                    "roomType": "MessageRoomU2",
+                    "toUserId": to.get_user_id(),
+                    "msgId": msg_id,
+                    "timeServer": round(time.time(), 3) * 1000,
+                    "image": {
+                        "url": file_id,
+                        "width": Image.open(file).size[0],
+                        "height": Image.open(file).size[1]
+                    },
+                    "type": "MessageImage"
+                }
+            }
+        )
         return msg_id
 
     async def send_image_to_group(self, to: Group, file: _io.BufferedReader, filename: str = None) -> str:
@@ -501,35 +387,26 @@ class Bot:
         file_id = await self._up_load_file(file, 3, filename)
         file.seek(0, 2)
         msg_id = f"GROUP-{math.floor(round(time.time(), 3) * 1000)}"
-        await self._httpclient.post(url="http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1",
-                                    json={
-                                        "action": "im.cts.message",
-                                        "body": {
-                                            "@type": "type.googleapis.com/site.ImCtsMessageRequest",
-                                            "message": {
-                                                "fromUserId": self.userid,
-                                                "roomType": "MessageRoomGroup",
-                                                "toGroupId": to.get_group_id(),
-                                                "msgId": msg_id,
-                                                "timeServer": round(time.time(), 3) * 1000,
-                                                "image": {
-                                                    "url": file_id,
-                                                    "width": Image.open(file).size[0],
-                                                    "height": Image.open(file).size[1]
-                                                },
-                                                "type": "MessageImage"
-                                            }
-                                        },
-                                        "header": {
-                                            "_3": self.token,
-                                            "_4": "http://chat.thisit.cc/index.php",
-                                            "_8": "1",
-                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ("
-                                                  "KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-                                        },
-                                        "packageId": self.packageId
-                                    })
-        self.packageId += 1
+        await self._http_post(
+            url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
+            action="im.cts.message",
+            body={
+                "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                "message": {
+                    "fromUserId": self.userid,
+                    "roomType": "MessageRoomGroup",
+                    "toGroupId": to.get_group_id(),
+                    "msgId": msg_id,
+                    "timeServer": round(time.time(), 3) * 1000,
+                    "image": {
+                        "url": file_id,
+                        "width": Image.open(file).size[0],
+                        "height": Image.open(file).size[1]
+                    },
+                    "type": "MessageImage"
+                }
+            }
+        )
         return msg_id
 
     async def apply_friend(self, user_id: str, greeting: str):
@@ -543,87 +420,60 @@ class Bot:
 
     async def recall_message(self, message_id: str, user: Friend):
         """撤回发送到好友的消息的方法"""
-        await self._httpclient.post(url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
-                                    json={
-                                        "action": "im.cts.message",
-                                        "body": {
-                                            "@type": "type.googleapis.com/site.ImCtsMessageRequest",
-                                            "message": {
-                                                "fromUserId": self.userid,
-                                                "roomType": "MessageRoomU2",
-                                                "toUserId": user.get_user_id(),
-                                                "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
-                                                "timeServer": round(time.time(), 3) * 1000,
-                                                "recall": {
-                                                    "msgId": message_id,
-                                                    "msgText": "此消息被撤回"
-                                                },
-                                                "type": "MessageRecall"
-                                            }
-                                        },
-                                        "header": {
-                                            "_3": self.token,
-                                            "_4": "http://chat.thisit.cc/",
-                                            "_8": "1",
-                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ("
-                                                  "KHTML, like Gecko)"
-                                                  "Chrome/115.0.0.0 Safari/537.36"
-                                        },
-                                        "packageId": self.packageId
-                                    })
-        self.packageId += 1
+        await self._http_post(
+            url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
+            action="im.cts.message",
+            body={
+                "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                "message": {
+                    "fromUserId": self.userid,
+                    "roomType": "MessageRoomU2",
+                    "toUserId": user.get_user_id(),
+                    "msgId": f"U2-{math.floor(round(time.time(), 3) * 1000)}",
+                    "timeServer": round(time.time(), 3) * 1000,
+                    "recall": {
+                        "msgId": message_id,
+                        "msgText": "此消息被撤回"
+                    },
+                    "type": "MessageRecall"
+                }
+            }
+        )
 
     async def recall_message_from_group(self, message_id: str, group: Group):
         """撤回发送到群的消息的方法"""
-        await self._httpclient.post(url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
-                                    json={
-                                        "action": "im.cts.message",
-                                        "body": {
-                                            "@type": "type.googleapis.com/site.ImCtsMessageRequest",
-                                            "message": {
-                                                "fromUserId": self.userid,
-                                                "roomType": "MessageRoomGroup",
-                                                "toGroupId": group.get_group_id(),
-                                                "msgId": f"GROUP-{math.floor(round(time.time(), 3) * 1000)}",
-                                                "timeServer": round(time.time(), 3) * 1000,
-                                                "recall": {
-                                                    "msgId": message_id,
-                                                    "msgText": "此消息被撤回"
-                                                },
-                                                "type": "MessageRecall"
-                                            }
-                                        },
-                                        "header": {
-                                            "_3": self.token,
-                                            "_4": "http://chat.thisit.cc/",
-                                            "_8": "1",
-                                            "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ("
-                                                  "KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-                                        },
-                                        "packageId": self.packageId
-                                    })
+        await self._http_post(
+            url='http://chat.thisit.cc/index.php?action=im.cts.message&body_format=json&lang=1',
+            action="im.cts.message",
+            body={
+                "@type": "type.googleapis.com/site.ImCtsMessageRequest",
+                "message": {
+                    "fromUserId": self.userid,
+                    "roomType": "MessageRoomGroup",
+                    "toGroupId": group.get_group_id(),
+                    "msgId": f"GROUP-{math.floor(round(time.time(), 3) * 1000)}",
+                    "timeServer": round(time.time(), 3) * 1000,
+                    "recall": {
+                        "msgId": message_id,
+                        "msgText": "此消息被撤回"
+                    },
+                    "type": "MessageRecall"
+                }
+            }
+        )
 
     async def accept(self, agree: bool, user_id: str):
         """设置是否通过好友申请的方法"""
-        response = await self._httpclient.post(
+        response = await self._http_post(
             url="http://chat.thisit.cc/index.php?action=api.friend.accept&body_format=json&lang=1",
-            json={
-                "action": "api.friend.accept",
-                "body": {
-                    "@type": "type.googleapis.com/site.ApiFriendAcceptRequest",
-                    "applyUserId": user_id,
-                    "agree": agree
-                },
-                "header": {
-                    "_3": self.token,
-                    "_4": "http://chat.thisit.cc/index.php",
-                    "_8": "1",
-                    "_6": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/115.0.0.0 Safari/537.36"
-                },
-                "packageId": self.packageId
-            })
-        self.packageId += 1
+            action="api.friend.accept",
+            body={
+                "@type": "type.googleapis.com/site.ApiFriendAcceptRequest",
+                "applyUserId": user_id,
+                "agree": agree
+            }
+        )
+
         return response.json()['header']['_1'] == 'success'
 
     def start(self):

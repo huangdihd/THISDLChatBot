@@ -41,6 +41,6 @@ class Group:
         return self.profile['name']
 
     def get_avatar_url(self) -> str:
-        """获取群头像的方法"""
+        """获取群头像url的方法"""
         return f'http://chat.thisit.cc/index.php?action=http.file.downloadFile&fileId={self.profile["avatar"]}\
         &returnBase64=0&lang=1'
