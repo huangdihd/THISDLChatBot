@@ -56,7 +56,7 @@ class Bot:
         """用于处理命令的内部方法"""
         for plugin in self._plugins:
             for messageProcessor in plugin.MessageProcessors:
-                asyncio.create_task(messageProcessor.process(message, self, ))
+                asyncio.create_task(messageProcessor.process(message, self))
 
     def _get_requests_json(self, action: str, body: dict) -> dict:
         """用于生成带有bot的token信息和package_id的json请求体的内部方法"""
