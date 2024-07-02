@@ -81,6 +81,8 @@ class Bot:
                 return await self._httpclient.post(url=url, json=self._get_requests_json(action, body))
             except httpx.ReadTimeout:
                 self.logger.error('请求超时,请检查网络...')
+            except httpx.ConnectTimeout:
+                self.logger.error('请求超时,请检查网络...')
             except httpcore.ConnectError as exc:
                 self.logger.error(f'连接失败,请检查网络:{exc}')
             except httpx.ConnectError as exc:
