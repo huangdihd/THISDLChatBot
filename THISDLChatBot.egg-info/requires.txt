@@ -1,0 +1,4 @@
+colorama
+httpx
+pillow
+beautifulsoup4

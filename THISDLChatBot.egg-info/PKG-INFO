@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: THISDLChatBot
+Version: 2.0.14
+Summary: A chatbot framework for THISDL chat rooms
+Home-page: https://github.com/huangdihd/THISDLChatBot
+Author: huangdihd
+Author-email: hd20100104@163.com
+License: GPLv3
+License-File: LICENSE
+Requires-Dist: colorama
+Requires-Dist: httpx
+Requires-Dist: pillow
+Requires-Dist: beautifulsoup4
