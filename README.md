@@ -3,7 +3,7 @@
 一个基于python的THISDLChatRoom的异步聊天机器人开源框架  
 ## 使用教程  
 ## 本项目刚进行重构,可能有问题,如果你希望稳定的使用的话依旧可以使用旧版
-### 1.安装3.7以上版本的python和pip
+### 1.安装3.11以上版本的python和pip
 #### 这个不用我教了吧,我相信你能搞定的  
 ### 2.用pip安装THISDLChatBot
 #### 在你的电脑/服务器的终端上运行 `pip install THISDLChatBot`
