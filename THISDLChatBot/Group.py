@@ -1,5 +1,5 @@
 from .Friend import Friend
-from . import server
+from .Constants import *
 
 
 class Group:

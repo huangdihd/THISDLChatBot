@@ -1,4 +1,4 @@
-from . import server
+from .Constants import *
 
 
 class Friend:

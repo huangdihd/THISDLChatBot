@@ -9,7 +9,7 @@ import asyncio
 from PIL import Image
 from httpx import Response
 
-from . import server
+from .Constants import *
 from .Config import Config
 from .Exceptions import LoginFailedException, UpLoadFileFailedException, HttpResponseException
 from .Friend import Friend

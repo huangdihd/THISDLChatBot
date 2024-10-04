@@ -4,6 +4,7 @@ setup.py
 THISDLChatBot/Bot.py
 THISDLChatBot/CommandProcessor.py
 THISDLChatBot/Config.py
+THISDLChatBot/Constants.py
 THISDLChatBot/Exceptions.py
 THISDLChatBot/Friend.py
 THISDLChatBot/Group.py
