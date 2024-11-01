@@ -42,7 +42,7 @@ class Config:
             while True:
                 logger_level = logger.input("日志等级,默认INFO:")
                 if logger_level == "":
-                    logger_level = "iNFO"
+                    logger_level = "INFO"
                     break
                 if logger_level in levels:
                     break

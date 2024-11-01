@@ -1,10 +1,12 @@
 import asyncio
 
-from .CommandProcessor import CommandProcessor
-from .MessageProcessor import MessageProcessor
+from .Processors import CommandProcessor
+from .Processors import MessageProcessor
 from .Message import Message
 from functools import wraps
 from abc import ABC, abstractmethod
+
+from .Types import MessageType, RoomType
 
 
 class Plugin(ABC):
@@ -31,7 +33,7 @@ class Plugin(ABC):
         """插件卸载时会调用的方法"""
         pass
 
-    def on_command(self, command: str, alias: list[str] = None):
+    def on_command(self, command: str, alias: list[str] = None, room_type: RoomType = None):
         """用于绑定命令处理器的装饰器"""
         def command_processor(func):
             @wraps(func)
@@ -40,24 +42,25 @@ class Plugin(ABC):
                 for cmd in commands:
                     if cmd not in self.CommandProcessors:
                         self.CommandProcessors[cmd] = []
-                    self.CommandProcessors[cmd].append(CommandProcessor(cmd, func))
+                    self.CommandProcessors[cmd].append(CommandProcessor(cmd, func, room_type))
 
-            return wrapper
+            return wrapper()
 
         return command_processor
 
-    def on_message(self):
+    def on_message(self, message_type: MessageType = None, room_type: RoomType = None):
         """用于绑定消息处理器的装饰器"""
         def message_processor(func):
             @wraps(func)
             def wrapper():
-                self.MessageProcessors.append(MessageProcessor(func))
+                self.MessageProcessors.append(MessageProcessor(func, message_type, room_type))
 
-            return wrapper
+            return wrapper()
 
         return message_processor
 
     def process_command(self, message: Message):
+        """用于处理命令的函数"""
         if message.get_data().split(' ')[0][1:] not in self.CommandProcessors:
             return
         for commandProcessor in self.CommandProcessors[message.get_data().split(' ')[0][1:]]:
@@ -65,6 +68,7 @@ class Plugin(ABC):
                 commandProcessor.process((message.get_data() + ' ').split(' ')[1:-1], message, self.bot))
 
     def process_message(self, message: Message):
+        """用于处理消息的函数"""
         for messageProcessor in self.MessageProcessors:
             asyncio.create_task(messageProcessor.process(message, self.bot))
 
