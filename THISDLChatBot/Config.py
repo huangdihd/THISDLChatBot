@@ -1,132 +1,165 @@
-import os
+from abc import ABC, abstractmethod
+
 from .Logger import Logger
 from .Logger import levels
 import json
 
 
-class Config:
-    """配置文件类"""
+class ConfigValue(ABC):
+    """配置文件值的类"""
+    use_password = False
 
-    def __init__(self, filepath: str = 'config.json') -> None:
+    def __init__(self, input_prompt: str, normal_value=None):
+        """创建配置文件值的方法"""
+        self.__value = None
+        self.input_prompt = input_prompt
+        self.normal_value = normal_value
+
+    def get(self):
+        """获取值的方法"""
+        return self.__value
+
+    def set(self, value) -> None:
+        """设置值的方法"""
+        try:
+            self.__value = self.process_value(value)
+        except ValueError as ve:
+            if self.normal_value is None:
+                raise ve
+            self.__value = self.normal_value
+
+    @abstractmethod
+    def process_value(self, value):
+        """处理输入值到真实值的方法"""
+        pass
+
+
+class IntValue(ConfigValue):
+    """整数配置文件值的类"""
+    def process_value(self, value):
+        """处理输入至整数值的方法"""
+        return int(value)
+
+
+class StringValue(ConfigValue):
+    """字符串配置文件值的类"""
+    def process_value(self, value):
+        """处理输入至字符串值的方法"""
+        return str(value)
+
+
+class BoolValue(ConfigValue):
+    """布尔配置文件值的类"""
+    def process_value(self, value):
+        """处理输入至布尔值的方法"""
+        if value is bool:
+            return value
+        options = {
+            "true": True,
+            "True": True,
+            "false": False,
+            "False": False
+        }
+        if value in options:
+            return options[value]
+        return bool(value)
+
+
+class PasswordValue(StringValue):
+    """密码配置文件值的类"""
+    use_password = True
+
+
+class LoggerLevelValue(ConfigValue):
+    """日志等级配置文件值的类"""
+    def process_value(self, value):
+        """处理输入至日志等级对应字符串的方法"""
+        if value not in levels:
+            raise ValueError("unavailable logger level")
+        return value
+
+
+class Config(ABC):
+    """配置文件类"""
+    def __init__(self, filepath: str = 'config.json', encoding: str = 'utf-8') -> None:
         """通过文件路径创建配置文件对象,默认路径为"config.json\""""
-        self.config = None
         self.filepath = filepath
+        self.encoding = encoding
+        self.values: dict[str, ConfigValue] = {}
+        self._add_values()
         self.reload()
+
+    @abstractmethod
+    def _add_values(self):
+        """添加配置文件值的方法"""
+        pass
 
     def __getitem__(self, item):
         """获取配置文件中的值的方法"""
-        return self.config.get(item)
+        return self.values.get(item).get()
+
+    def to_dict(self) -> dict:
+        """将配置文件转成json的方法"""
+        res = {}
+        for key, value in self.values.items():
+            res[key] = value.get()
+        return res
 
     def save(self):
         """保存配置文件的方法"""
-        json.dump(self.config, open(self.filepath, 'w', encoding='utf-8'), indent=4)
+        with open(self.filepath, 'w', encoding=self.encoding) as config:
+            json.dump(self.to_dict(), config, indent=4)
 
     def create_guide(self, logger: Logger):
         """创建配置文件的向导方法"""
-        logger.warn("缺少配置文件或配置文件缺少值,启动配置文件创建程序!")
-        if not os.path.exists(self.filepath) or "username" not in json.load(open(self.filepath)):
-            username = logger.input("输入用户名:")
-            while username == "":
-                logger.error("没有输入任何内容!")
-                username = logger.input("输入用户名:")
-        else:
-            username = json.load(open(self.filepath))["username"]
-        if not os.path.exists(self.filepath) or "password" not in json.load(open(self.filepath)):
-            password = logger.password("请输入密码(不显示):")
-            while password == "":
-                logger.error("没有输入任何内容!")
-                password = logger.password("请输入密码(不显示):")
-        else:
-            password = json.load(open("config.json"))["password"]
-        if not os.path.exists(self.filepath) or "logger_level" not in json.load(open(self.filepath)):
-            while True:
-                logger_level = logger.input("日志等级,默认INFO:")
-                if logger_level == "":
-                    logger_level = "INFO"
-                    break
-                if logger_level in levels:
-                    break
-        else:
-            logger_level = json.load(open(self.filepath))["logger_level"]
-        if not os.path.exists(self.filepath) or "http_retry" not in json.load(open(self.filepath)):
-            http_retry = logger.input("http请求失败后的重试次数,默认5:")
-            if http_retry == "":
-                http_retry = 5
+        for value in self.values.values():
+            if value.get() is not None:
+                continue
+            if value.use_password:
+                value.set(logger.password(value.input_prompt))
             else:
-                while True:
-                    try:
-                        http_retry = int(http_retry)
-                        break
-                    except ValueError:
-                        logger.error("错误:该值不是数字!")
-                        http_retry = logger.input("http请求失败后的重试次数,默认5:")
-        else:
-            http_retry = json.load(open(self.filepath))["wait_time"]
-        if not os.path.exists(self.filepath) or "wait_time" not in json.load(open(self.filepath)):
-            wait_time = logger.input("输入每次获取消息的间隔时间(ms),默认500:")
-            if wait_time == "":
-                wait_time = 500
-            else:
-                while True:
-                    try:
-                        wait_time = int(wait_time)
-                        break
-                    except ValueError:
-                        logger.error("错误:该值不是数字!")
-                        wait_time = logger.input("输入每次获取消息的间隔时间(ms),默认500:")
-        else:
-            wait_time = json.load(open(self.filepath))["wait_time"]
-        if not os.path.exists(self.filepath) or "auto_login" not in json.load(open(self.filepath)):
-            auto_login = logger.input("是否自动重新登录(true或false),默认true:")
-            if auto_login == "":
-                auto_login = True
-            else:
-                while True:
-                    if auto_login == "true":
-                        auto_login = True
-                        break
-                    elif auto_login == "false":
-                        auto_login = False
-                        break
-                    else:
-                        logger.error("错误:请输入true或false:!")
-                        auto_login = logger.input("是否自动重新登录(true或false),默认true:")
-        else:
-            auto_login = json.load(open(self.filepath))["auto_login"]
-        if not os.path.exists(self.filepath) or "auto_accept" not in json.load(open(self.filepath)):
-            auto_accept = logger.input("是否自动同意好友申请(true或false),默认true:")
-            if auto_accept == "":
-                auto_accept = True
-            else:
-                while True:
-                    if auto_accept == "true":
-                        auto_accept = True
-                        break
-                    elif auto_accept == "false":
-                        auto_accept = False
-                        break
-                    else:
-                        logger.error("错误:请输入true或false:!")
-                        auto_accept = logger.input("是否自动同意好友申请(true或false),默认true:")
-        else:
-            auto_accept = json.load(open(self.filepath))["auto_login"]
-        self.config = {
-            "username": username,
-            "password": password,
-            "logger_level": logger_level,
-            "http_retry": http_retry,
-            "wait_time": wait_time,
-            "auto_login": auto_login,
-            "auto_accept": auto_accept
-        }
+                value.set(logger.input(value.input_prompt))
         self.save()
 
     def reload(self):
         """从文件重载配置文件的方法"""
-        keys = ['username', 'password', 'logger_level', 'http_retry', 'wait_time', 'auto_login', 'auto_accept']
-        if os.path.exists("config.json") and list(json.load(open(self.filepath)).keys()).sort() == keys.sort():
-            self.config = json.load(open("config.json", encoding='utf-8'))
-            return self.config
-        else:
-            self.config = {}
-            return self.config
+        with open(self.filepath, encoding=self.encoding) as config:
+            json_config = json.load(config)
+            for key, value in self.values.items():
+                value.set(json_config[key])
+
+
+class ChatBotConfig(Config):
+    """机器人配置文件类"""
+    def _add_values(self):
+        """添加配置文件值的方法"""
+        self.values = {
+            "username": StringValue(
+                "Please enter your username",
+                ""
+            ),
+            "password": PasswordValue(
+                "Please enter your password",
+                ""
+            ),
+            "logger_level": LoggerLevelValue(
+                "Please specify the logger level",
+                "INFO"
+            ),
+            "http_retry": IntValue(
+                "Please specify the HTTP retry count",
+                5
+            ),
+            "wait_time": IntValue(
+                "Please specify the wait time after receiving a message (in seconds)",
+                5
+            ),
+            "auto_accept": BoolValue(
+                "Should auto-accept friend requests? (True/False)",
+                True
+            ),
+            "auto_login": BoolValue(
+                "Should auto-login be enabled? (True/False)",
+                True
+            )
+        }

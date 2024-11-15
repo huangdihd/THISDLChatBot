@@ -2,7 +2,7 @@
 
 from .Bot import Bot
 from THISDLChatBot.Processors.CommandProcessor import CommandProcessor
-from .Config import Config
+from .Config import ChatBotConfig
 from .Friend import Friend
 from .Group import Group
 from .Logger import Logger

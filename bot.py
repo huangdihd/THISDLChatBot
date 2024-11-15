@@ -1,17 +1,15 @@
 """实例入口文件"""
-import THISDLChatBot
-from THISDLChatBot.Plugin import load_plugin
 from THISDLChatBot.Bot import Bot
+from THISDLChatBot.Config import ChatBotConfig
 from THISDLChatBot.Logger import Logger
-from THISDLChatBot.Config import Config
+from THISDLChatBot.Plugin import load_plugin
 
 # 创建日志logger对象
 logger = Logger()
 # 创建配置文件对象
-config = Config()
+config = ChatBotConfig()
 # 当没有配置文件时运行创建向导
-if config.config == {}:
-    config.create_guide(logger)
+config.create_guide(logger)
 # 创建机器人对象
 bot = Bot(config, logger)
 # 加载testplugin插件
