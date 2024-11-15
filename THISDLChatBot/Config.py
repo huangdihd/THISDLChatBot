@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from json import JSONDecodeError
 
 from .Logger import Logger
 from .Logger import levels
@@ -21,6 +22,9 @@ class ConfigValue(ABC):
 
     def set(self, value) -> None:
         """设置值的方法"""
+        if value is None:
+            self.__value = None
+            return
         try:
             self.__value = self.process_value(value)
         except ValueError as ve:
@@ -52,7 +56,7 @@ class BoolValue(ConfigValue):
     """布尔配置文件值的类"""
     def process_value(self, value):
         """处理输入至布尔值的方法"""
-        if value is bool:
+        if isinstance(value, bool):
             return value
         options = {
             "true": True,
@@ -123,10 +127,14 @@ class Config(ABC):
 
     def reload(self):
         """从文件重载配置文件的方法"""
+        open(self.filepath, 'a')
         with open(self.filepath, encoding=self.encoding) as config:
-            json_config = json.load(config)
+            try:
+                json_config = json.load(config)
+            except JSONDecodeError:
+                json_config = {}
             for key, value in self.values.items():
-                value.set(json_config[key])
+                value.set(json_config.get(key))
 
 
 class ChatBotConfig(Config):
@@ -135,31 +143,31 @@ class ChatBotConfig(Config):
         """添加配置文件值的方法"""
         self.values = {
             "username": StringValue(
-                "Please enter your username",
+                "Please enter your username:",
                 ""
             ),
             "password": PasswordValue(
-                "Please enter your password",
+                "Please enter your password:",
                 ""
             ),
             "logger_level": LoggerLevelValue(
-                "Please specify the logger level",
+                "Please specify the logger level:",
                 "INFO"
             ),
             "http_retry": IntValue(
-                "Please specify the HTTP retry count",
+                "Please specify the HTTP retry count:",
                 5
             ),
             "wait_time": IntValue(
-                "Please specify the wait time after receiving a message (in seconds)",
-                5
+                "Please specify the wait time after receiving a message (in microseconds):",
+                500
             ),
             "auto_accept": BoolValue(
-                "Should auto-accept friend requests? (True/False)",
+                "Should auto-accept friend requests? (True/False):",
                 True
             ),
             "auto_login": BoolValue(
-                "Should auto-login be enabled? (True/False)",
+                "Should auto-login be enabled? (True/False):",
                 True
             )
         }
