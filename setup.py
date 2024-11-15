@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='THISDLChatBot',
-    version='2.0.17',
+    version='2.0.18',
     description='A chatbot framework for THISDL chat rooms',
     url='https://github.com/huangdihd/THISDLChatBot',
     author='huangdihd',
